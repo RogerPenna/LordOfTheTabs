@@ -15,7 +15,9 @@ let settings = {
   primary_click_action: 'switch',
   ghost_filter_enabled: true,
   ghost_filter_scope: 'subdomain',
-  startup_focus: false
+  startup_focus: false,
+  open_dashboard_initial: false,
+  dashboard_as_newtab: false
 };
 
 // --- Initialization ---
@@ -51,6 +53,8 @@ async function loadSettings() {
       document.getElementById('ghost_filter_enabled').checked = settings.ghost_filter_enabled;
       document.getElementById('ghost_filter_scope').value = settings.ghost_filter_scope;
       document.getElementById('startup_focus').checked = settings.startup_focus;
+      document.getElementById('open_dashboard_initial').checked = settings.open_dashboard_initial;
+      document.getElementById('dashboard_as_newtab').checked = settings.dashboard_as_newtab;
       
       resolve();
     });
@@ -456,5 +460,15 @@ function setupSettingsListeners() {
   
   document.getElementById('startup_focus').addEventListener('change', (e) => {
     saveSetting('startup_focus', e.target.checked);
+  });
+
+  document.getElementById('open_dashboard_initial').addEventListener('change', (e) => {
+    saveSetting('open_dashboard_initial', e.target.checked);
+    // Notify background to update popup state
+    chrome.runtime.sendMessage({ action: 'updateActionPopup', enabled: e.target.checked });
+  });
+
+  document.getElementById('dashboard_as_newtab').addEventListener('change', (e) => {
+    saveSetting('dashboard_as_newtab', e.target.checked);
   });
 }

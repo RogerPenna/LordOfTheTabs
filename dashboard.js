@@ -10,6 +10,21 @@ let currentView = 'table';
 let drillPath = []; // Array of { type, value }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Check if we should be here (New Tab Override logic)
+  const settings = await chrome.storage.sync.get({ dashboard_as_newtab: false });
+  // If this is a new tab (no history state or specific URL params) and setting is OFF
+  // Redirect to default new tab.
+  if (!settings.dashboard_as_newtab && !window.location.search.includes('source=extension')) {
+    // Only redirect if we are actually the "newtab" override
+    // We can check if history.length is 1 or similar, but the safest is to let user toggle.
+    // However, if they opened it from the popup, we should stay.
+    // We'll use a simple heuristic: if it's the only page in history and setting is off.
+    if (window.history.length <= 1) {
+      window.location.href = 'chrome://new-tab-page';
+      return;
+    }
+  }
+
   await loadData();
   setupEventListeners();
   setupViewNavigation();

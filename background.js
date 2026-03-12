@@ -88,8 +88,31 @@ async function tryEnhanceTitle(tabId, url, currentTitle) {
   }).catch(() => {});
 }
 
-// Broadcast channel for background if needed, but background can listen to messages for Sheet backup
+// Handle extension icon click (only fires if popup is "")
+chrome.action.onClicked.addListener(() => {
+  chrome.tabs.create({ url: 'dashboard.html' });
+});
+
+// Initialize popup state on startup
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.sync.get({ open_dashboard_initial: false }, (items) => {
+    chrome.action.setPopup({ popup: items.open_dashboard_initial ? "" : "popup.html" });
+  });
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  chrome.storage.sync.get({ open_dashboard_initial: false }, (items) => {
+    chrome.action.setPopup({ popup: items.open_dashboard_initial ? "" : "popup.html" });
+  });
+});
+
+// Listen for settings changes
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'updateActionPopup') {
+    chrome.action.setPopup({ popup: request.enabled ? "" : "popup.html" });
+    return;
+  }
+  
   if (request.action === 'backupToSheets') {
     pushToSheets(request.data).then(sendResponse).catch(err => sendResponse({error: err.message}));
     return true; // Keep channel open for async response

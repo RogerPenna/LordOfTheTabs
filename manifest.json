@@ -24,6 +24,19 @@
     "type": "module"
   },
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "logo_transparent.png",
+      "48": "logo_transparent.png",
+      "128": "logo_transparent.png"
+    }
+  },
+  "icons": {
+    "16": "logo_transparent.png",
+    "48": "logo_transparent.png",
+    "128": "logo_transparent.png"
+  },
+  "chrome_url_overrides": {
+    "newtab": "dashboard.html"
   }
 }
