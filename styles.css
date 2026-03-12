@@ -5,19 +5,44 @@
   --text: #1e293b;
   --card-bg: #ffffff;
   --border: #e2e8f0;
+  
+  /* Density Variables */
+  --tile-size: 48px;
+  --favicon-size: 24px;
+  --window-min-width: 300px;
+  --grid-gap: 8px;
+  --grid-cols: repeat(auto-fill, minmax(var(--tile-size), 1fr));
 }
 
 body {
   width: 800px;
+  height: 600px;
   margin: 0;
   font-family: -apple-system, system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   overflow: hidden;
-  height: 600px;
   display: flex;
   flex-direction: column;
   position: relative; /* For settings pane */
+}
+
+/* Density Levels */
+body.density-compact {
+  --tile-size: 32px;
+  --favicon-size: 18px;
+  --window-min-width: 200px;
+}
+
+body.density-tiny {
+  --tile-size: 24px;
+  --favicon-size: 16px;
+  --window-min-width: 150px;
+  --grid-gap: 4px;
+}
+
+body.force-narrow .grid-container {
+  grid-template-columns: repeat(3, var(--tile-size)) !important;
 }
 
 /* Control Header */
@@ -98,7 +123,7 @@ body {
 }
 
 .window-pane {
-  min-width: 300px;
+  min-width: var(--window-min-width);
   max-width: 400px;
   background: white;
   border: 1px solid var(--border);
@@ -162,14 +187,14 @@ body {
 /* Grid (Gallery) Mode */
 .grid-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
-  gap: 8px;
+  grid-template-columns: var(--grid-cols);
+  gap: var(--grid-gap);
   padding: 12px;
 }
 
 .grid-tile {
-  width: 48px;
-  height: 48px;
+  width: var(--tile-size);
+  height: var(--tile-size);
   background: #f8fafc;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -185,8 +210,8 @@ body {
 .grid-tile.hidden { display: none; }
 
 .tile-favicon {
-  width: 24px;
-  height: 24px;
+  width: var(--favicon-size);
+  height: var(--favicon-size);
   object-fit: contain;
   pointer-events: none;
 }
@@ -224,6 +249,41 @@ body {
   max-width: 300px;
   word-break: break-all;
   display: none;
+}
+
+/* Tooltips for Close/Discard */
+.info-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  background: #64748b;
+  color: white;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 14px;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: help;
+  margin-left: 4px;
+  position: relative;
+}
+
+.info-icon:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  width: 200px;
+  white-space: normal;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+  pointer-events: none;
 }
 
 /* Action Bar */

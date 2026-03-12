@@ -11,45 +11,97 @@
       <h1>Tab Dashboard</h1>
       <span id="tab-count" class="badge">0 Tabs</span>
     </div>
+    <div class="view-nav">
+      <button id="btn-view-table" class="nav-btn active">📋 Table</button>
+      <button id="btn-view-charts" class="nav-btn">📊 Charts</button>
+    </div>
     <div class="actions">
-      <button id="btn-refresh" class="secondary">↻ Refresh Data</button>
-      <button id="btn-backup" class="primary">Backup to Google Sheets</button>
+      <div class="bulk-actions" style="margin-right: auto; display: flex; gap: 8px;">
+        <button id="btn-close-selected" class="danger">Close <span class="info-icon" data-tip="Permanently remove tabs from your session.">?</span></button>
+        <button id="btn-discard-selected" class="secondary">Discard <span class="info-icon" data-tip="Free up RAM by hibernating tabs. They stay visible and reload when clicked.">?</span></button>
+        <button id="btn-move-selected" class="secondary">Move to Window</button>
+        <button id="btn-delete-history-selected" class="danger">Clear History</button>
+      </div>
+      <label style="font-size: 13px; display: flex; align-items: center; gap: 6px; margin-right: 12px; cursor: pointer;">
+        Group By: 
+        <select id="group-by-select" style="font-size: 12px; padding: 4px; border-radius: 4px;">
+          <option value="none">None</option>
+          <option value="window" selected>Window</option>
+          <option value="domain">Domain</option>
+          <option value="url">Clones (URL)</option>
+          <option value="importance">Importance</option>
+        </select>
+      </label>
+      <button id="btn-refresh" class="secondary">↻ Refresh</button>
+      <button id="btn-export-csv" class="secondary">Export CSV</button>
+      <button id="btn-backup" class="primary">Backup</button>
     </div>
   </div>
 
-  <div class="table-container">
-    <table class="dashboard-table">
-      <thead>
-        <tr class="sort-row">
-          <th style="width: 40px;">Icon</th>
-          <th data-sort="title" class="sortable">Title <span class="sort-icon">↕</span></th>
-          <th data-sort="url" class="sortable">URL <span class="sort-icon">↕</span></th>
-          <th data-sort="age" class="sortable">Age <span class="sort-icon">↕</span></th>
-          <th data-sort="lastAccess" class="sortable">Last Access <span class="sort-icon">↕</span></th>
-          <th data-sort="importance" class="sortable">Importance <span class="sort-icon">↕</span></th>
-        </tr>
-        <tr class="filter-row">
-          <th></th>
-          <th><input type="text" placeholder="Filter title..." class="col-filter" data-col="title"></th>
-          <th><input type="text" placeholder="Filter URL..." class="col-filter" data-col="url"></th>
-          <th><input type="number" placeholder="Min age..." class="col-filter" data-col="age"></th>
-          <th></th>
-          <th>
-            <select class="col-filter" data-col="importance">
-              <option value="0">All Stars</option>
-              <option value="1">1+ ★</option>
-              <option value="2">2+ ★</option>
-              <option value="3">3+ ★</option>
-              <option value="4">4+ ★</option>
-              <option value="5">5 ★</option>
-            </select>
-          </th>
-        </tr>
-      </thead>
-      <tbody id="table-body">
-        <!-- Data populated by JS -->
-      </tbody>
-    </table>
+  <div id="table-view" class="view-content">
+    <div class="table-container">
+      <table class="dashboard-table">
+        <thead>
+          <tr class="sort-row">
+            <th style="width: 30px;"><input type="checkbox" id="select-all"></th>
+            <th style="width: 30px;">Go</th>
+            <th style="width: 40px;">Icon</th>
+            <th data-sort="title" class="sortable">Title <span class="sort-icon">↕</span></th>
+            <th data-sort="url" class="sortable">URL <span class="sort-icon">↕</span></th>
+            <th data-sort="windowIndex" class="sortable">Win <span class="sort-icon">↕</span></th>
+            <th data-sort="memory" class="sortable">Memory <span class="sort-icon">↕</span></th>
+            <th data-sort="age" class="sortable">Age <span class="sort-icon">↕</span></th>
+            <th data-sort="lastAccess" class="sortable">Last Access <span class="sort-icon">↕</span></th>
+            <th data-sort="importance" class="sortable">Importance <span class="sort-icon">↕</span></th>
+          </tr>
+          <tr class="filter-row">
+            <th></th>
+            <th></th>
+            <th></th>
+            <th><input type="text" placeholder="Filter title..." class="col-filter" data-col="title"></th>
+            <th><input type="text" placeholder="Filter URL..." class="col-filter" data-col="url"></th>
+            <th></th>
+            <th></th>
+            <th><input type="number" placeholder="Min age..." class="col-filter" data-col="age"></th>
+            <th></th>
+            <th>
+              <select class="col-filter" data-col="importance">
+                <option value="0">All Stars</option>
+                <option value="1">1+ ★</option>
+                <option value="2">2+ ★</option>
+                <option value="3">3+ ★</option>
+                <option value="4">4+ ★</option>
+                <option value="5">5 ★</option>
+              </select>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <!-- Data populated by JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="charts-view" class="view-content" style="display: none;">
+    <div id="charts-nav" style="display: none; align-items: center; gap: 15px; margin-bottom: 20px; background: white; padding: 12px 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <button id="btn-charts-back" class="secondary" style="padding: 4px 12px; font-size: 12px;">← Back</button>
+      <span id="charts-path" style="font-weight: 600; color: #475569; font-size: 14px;">Overview</span>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3 id="chart-title-domains">Tabs by Domain</h3>
+        <div id="chart-domains" class="chart-container"></div>
+      </div>
+      <div id="chart-card-memory" class="chart-card">
+        <h3 id="chart-title-memory">Memory per Window (MB)</h3>
+        <div id="chart-memory-window" class="chart-container"></div>
+      </div>
+      <div id="chart-card-mixed" class="chart-card large">
+        <h3>Mixed Pizza (Window & Domain Memory)</h3>
+        <div id="chart-mixed" class="chart-container"></div>
+      </div>
+    </div>
   </div>
   <script type="module" src="dashboard.js"></script>
 </body>

@@ -8,7 +8,12 @@
     "windows",
     "activeTab",
     "storage",
-    "identity"
+    "identity",
+    "scripting",
+    "history"
+  ],
+  "host_permissions": [
+    "https://gemini.google.com/*"
   ],
   "oauth2": {
     "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",

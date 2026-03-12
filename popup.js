@@ -112,6 +112,49 @@ function render() {
     pane.appendChild(scrollArea);
     canvas.appendChild(pane);
   });
+
+  if (currentView === 'grid') {
+    autoAdjustDensity();
+  } else {
+    // Reset density for list view
+    document.body.classList.remove('density-compact', 'density-tiny', 'force-narrow');
+  }
+}
+
+function autoAdjustDensity() {
+  const body = document.body;
+  const canvas = document.getElementById('canvas');
+  
+  // Reset to standard
+  body.classList.remove('density-compact', 'density-tiny', 'force-narrow');
+  
+  // Heuristic check: if many windows or many tabs, start compact
+  const totalTabs = allWindows.reduce((sum, win) => sum + win.tabs.length, 0);
+  if (allWindows.length > 4 || totalTabs > 50) {
+    body.classList.add('density-compact');
+  }
+
+  // Refine based on actual dimensions
+  // Chrome popups hit 800x600 limit. 
+  // We check if content would exceed these limits.
+  const checkOverflow = () => {
+    return canvas.scrollWidth > 800 || canvas.scrollHeight > 600;
+  };
+
+  if (checkOverflow()) {
+    if (!body.classList.contains('density-compact')) {
+      body.classList.add('density-compact');
+    }
+    
+    if (checkOverflow()) {
+      body.classList.remove('density-compact');
+      body.classList.add('density-tiny');
+      
+      if (checkOverflow()) {
+        body.classList.add('force-narrow');
+      }
+    }
+  }
 }
 
 // --- Element Creation & Interaction ---
@@ -317,10 +360,12 @@ function setupEventListeners() {
   // Action Buttons
   document.getElementById('btn-close').addEventListener('click', async () => {
     if (selectedIds.size === 0) return;
-    await chrome.tabs.remove(Array.from(selectedIds));
-    selectedIds.clear();
-    await refreshState();
-    render();
+    if (confirm(`Close ${selectedIds.size} tabs?`)) {
+      await chrome.tabs.remove(Array.from(selectedIds));
+      selectedIds.clear();
+      await refreshState();
+      render();
+    }
   });
   
   document.getElementById('btn-discard').addEventListener('click', async () => {
@@ -330,16 +375,58 @@ function setupEventListeners() {
     await refreshState();
     render();
   });
-  
-  document.getElementById('btn-invert').addEventListener('click', () => {
-    const query = searchInput.value.toLowerCase();
-    allWindows.flatMap(w => w.tabs).forEach(tab => {
-      if (checkVisibility(tab, query)) {
-        if (selectedIds.has(tab.id)) selectedIds.delete(tab.id);
-        else selectedIds.add(tab.id);
+
+  document.getElementById('btn-move-tabs').addEventListener('click', async () => {
+    if (selectedIds.size === 0) return;
+    
+    const windows = await chrome.windows.getAll();
+    const options = windows.map((win, idx) => `${idx + 1}: Window ${idx + 1}`).join('\n');
+    const choice = prompt(`Move ${selectedIds.size} tabs to?\n${options}\nOr type "new" for a new window:`);
+    
+    if (!choice) return;
+    
+    const tabIds = Array.from(selectedIds);
+    if (choice.toLowerCase() === 'new') {
+      const firstId = tabIds.shift();
+      const newWin = await chrome.windows.create({ tabId: firstId });
+      if (tabIds.length > 0) {
+        await chrome.tabs.move(tabIds, { windowId: newWin.id, index: -1 });
       }
-    });
+    } else {
+      const idx = parseInt(choice) - 1;
+      if (windows[idx]) {
+        await chrome.tabs.move(tabIds, { windowId: windows[idx].id, index: -1 });
+      } else {
+        alert('Invalid window number');
+        return;
+      }
+    }
+    
+    selectedIds.clear();
+    await refreshState();
     render();
+  });
+
+  document.getElementById('btn-delete-history').addEventListener('click', async () => {
+    if (selectedIds.size === 0) return;
+    
+    const selectedTabs = allWindows.flatMap(w => w.tabs).filter(t => selectedIds.has(t.id));
+    const domains = new Set(selectedTabs.map(t => new URL(t.url).hostname));
+    const domainList = Array.from(domains).join(', ');
+    
+    if (confirm(`Delete ALL browser history for these domains?\n${domainList}`)) {
+      for (const domain of domains) {
+        const historyItems = await chrome.history.search({ text: domain, maxResults: 10000, startTime: 0 });
+        const itemsToRemove = historyItems.filter(item => {
+          try { return new URL(item.url).hostname === domain; } catch(e) { return false; }
+        });
+        
+        for (const item of itemsToRemove) {
+          await chrome.history.deleteUrl({ url: item.url });
+        }
+      }
+      alert(`History cleared for ${domains.size} domains.`);
+    }
   });
 }
 
