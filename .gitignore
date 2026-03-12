@@ -1,0 +1,14 @@
+# Chrome Extension specific
+*.pem
+*.crx
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Gemini CLI / Temporary files
+.gemini/
+*.log
+node_modules/
+dist/
+build/

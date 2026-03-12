@@ -1,0 +1,97 @@
+body { 
+  font-family: -apple-system, sans-serif; 
+  background: #f1f5f9; 
+  color: #1e293b; 
+  margin: 0; 
+  padding: 24px; 
+}
+
+.header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 24px; 
+}
+
+.title-area { display: flex; align-items: center; gap: 12px; }
+
+.badge {
+  background: #cbd5e1;
+  color: #475569;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+button { 
+  padding: 8px 16px; 
+  border-radius: 6px; 
+  cursor: pointer; 
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+button.primary { background: #2563eb; color: white; }
+button.secondary { background: white; border-color: #cbd5e1; color: #475569; margin-right: 8px; }
+button:hover { filter: brightness(0.9); }
+button:disabled { background: #94a3b8; cursor: not-allowed; }
+
+.table-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.dashboard-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  font-size: 13px;
+}
+
+.dashboard-table th, .dashboard-table td { 
+  padding: 12px 16px; 
+  text-align: left; 
+  border-bottom: 1px solid #f1f5f9; 
+}
+
+.dashboard-table thead th {
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Sorting */
+.sortable { cursor: pointer; user-select: none; position: relative; }
+.sortable:hover { background: #f1f5f9; color: #2563eb; }
+.sort-icon { font-size: 10px; margin-left: 4px; opacity: 0.3; }
+.active-asc .sort-icon { opacity: 1; color: #2563eb; }
+.active-desc .sort-icon { opacity: 1; color: #2563eb; }
+.active-asc .sort-icon::after { content: ' ↑'; }
+.active-desc .sort-icon::after { content: ' ↓'; }
+
+/* Filtering */
+.filter-row th { padding: 4px 16px 12px 16px; background: #f8fafc; }
+.col-filter {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 11px;
+  box-sizing: border-box;
+}
+.col-filter:focus { outline: none; border-color: #2563eb; ring: 2px solid #bfdbfe; }
+
+.truncate { 
+  max-width: 250px; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+}
+
+.star-rating { display: flex; gap: 2px; cursor: pointer; }
+.star { color: #cbd5e1; font-size: 16px; user-select: none; }
+.star.active { color: #fbbf24; }
+.star:hover { color: #f59e0b; }

@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Lord of the Tabs",
+  "version": "2.0",
+  "description": "High-performance tab management with List/Grid views, IndexedDB history, and Google Sheets Backup.",
+  "permissions": [
+    "tabs",
+    "windows",
+    "activeTab",
+    "storage",
+    "identity"
+  ],
+  "oauth2": {
+    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/spreadsheets"]
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
