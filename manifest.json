@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Lord of the Tabs",
-  "version": "2.0",
+  "version": "2.6",
   "description": "High-performance tab management with List/Grid views, IndexedDB history, and Google Sheets Backup.",
   "permissions": [
     "tabs",
@@ -10,10 +10,19 @@
     "storage",
     "identity",
     "scripting",
-    "history"
+    "history",
+    "favicon",
+    "alarms"
   ],
   "host_permissions": [
     "https://gemini.google.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["gemini_content_script.js"],
+      "run_at": "document_idle"
+    }
   ],
   "oauth2": {
     "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",

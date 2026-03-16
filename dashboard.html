@@ -15,12 +15,16 @@
     <div class="view-nav">
       <button id="btn-view-table" class="nav-btn active">📋 Table</button>
       <button id="btn-view-charts" class="nav-btn">📊 Charts</button>
+      <button id="btn-view-vault" class="nav-btn">🗄️ Vault</button>
+      <button id="btn-view-workspaces" class="nav-btn">📂 Saved Workspaces</button>
     </div>
     <div class="actions">
       <div class="bulk-actions" style="margin-right: auto; display: flex; gap: 8px;">
         <button id="btn-close-selected" class="danger">Close <span class="info-icon" data-tip="Permanently remove tabs from your session.">?</span></button>
         <button id="btn-discard-selected" class="secondary">Discard <span class="info-icon" data-tip="Free up RAM by hibernating tabs. They stay visible and reload when clicked.">?</span></button>
         <button id="btn-move-selected" class="secondary">Move to Window</button>
+        <button id="btn-bundle-selected" class="primary">📦 Bundle Workspace</button>
+        <button id="btn-merge-duplicates" class="primary">Merge Duplicates</button>
         <button id="btn-delete-history-selected" class="danger">Clear History</button>
       </div>
       <label style="font-size: 13px; display: flex; align-items: center; gap: 6px; margin-right: 12px; cursor: pointer;">
@@ -102,6 +106,16 @@
         <h3>Mixed Pizza (Window & Domain Memory)</h3>
         <div id="chart-mixed" class="chart-container"></div>
       </div>
+    </div>
+  </div>
+
+  <div id="vault-view" class="view-content" style="display: none;">
+    <!-- ... existing vault table ... -->
+  </div>
+
+  <div id="workspaces-view" class="view-content" style="display: none;">
+    <div class="workspaces-grid" id="workspaces-list">
+      <!-- Workspaces will be rendered here as cards -->
     </div>
   </div>
   <script type="module" src="dashboard.js"></script>
