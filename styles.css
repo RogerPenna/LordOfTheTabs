@@ -118,12 +118,13 @@ body.force-narrow .grid-container {
   gap: 12px;
   padding: 12px;
   overflow-x: auto;
-  align-items: flex-start;
+  align-items: stretch;
   transition: opacity 0.2s; /* Smooth transition for global ghosting if needed */
 }
 
 .window-pane {
-  min-width: var(--window-min-width);
+  min-width: 100px;
+  width: fit-content;
   max-width: 400px;
   background: white;
   border: 1px solid var(--border);
@@ -141,6 +142,8 @@ body.force-narrow .grid-container {
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .window-header:hover { background: #e2e8f0; }
@@ -190,6 +193,7 @@ body.force-narrow .grid-container {
   grid-template-columns: var(--grid-cols);
   gap: var(--grid-gap);
   padding: 12px;
+  width: fit-content;
 }
 
 .grid-tile {

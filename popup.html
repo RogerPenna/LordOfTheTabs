@@ -53,6 +53,21 @@
       <button id="close-settings" class="icon-btn">X</button>
     </div>
     <div class="settings-content">
+      <div class="setting-group" style="border-top: 1px solid var(--border); padding-top: 12px;">
+        <label for="density-select">Icon Size / Density</label>
+        <select id="density-select">
+          <option value="normal">Normal</option>
+          <option value="compact">Compact</option>
+          <option value="tiny">Tiny</option>
+        </select>
+      </div>
+
+      <div class="setting-group">
+        <label style="display: flex; align-items: center; gap: 6px;">
+          <input type="checkbox" id="narrow-toggle"> Narrow Mode (Force 3 columns)
+        </label>
+      </div>
+      
       <div class="setting-group">
         <label for="primary_click_action">Primary Click Action</label>
         <select id="primary_click_action">
@@ -81,6 +96,13 @@
         <label style="display: flex; align-items: center; gap: 6px;">
           <input type="checkbox" id="startup_focus"> Auto-focus search bar on open
         </label>
+      </div>
+
+      <div class="setting-group" style="padding-top: 8px;">
+        <label style="display: flex; align-items: center; gap: 6px; font-weight: bold;">
+          <input type="checkbox" id="auto-fit-toggle"> 🪄 Auto-Fit Layout
+        </label>
+        <small style="font-size: 10px; color: #64748b; display: block; margin-top: 4px;">Automatically shrinks icons and narrows columns to fit the screen.</small>
       </div>
 
       <div class="setting-group" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
