@@ -19,6 +19,8 @@ let settings = {
   autoFit: false
 };
 
+const channel = new BroadcastChannel('tab_sync');
+
 window.addEventListener('unload', () => {
   if (channel) channel.close();
 });
@@ -340,15 +342,27 @@ function setupEventListeners() {
   }
 
   // Footer Actions
-  document.getElementById('btn-close')?.addEventListener('click', async () => {
-    if (selectedIds.size === 0) return;
-    if (confirm(`Close ${selectedIds.size} tabs?`)) {
-      await chrome.tabs.remove(Array.from(selectedIds));
-      selectedIds.clear();
-      await refreshState();
-      render();
-    }
-  });
+  const btnClose = document.getElementById('btn-close');
+  if (btnClose) {
+    btnClose.addEventListener('click', async () => {
+      if (selectedIds.size === 0) return;
+      if (confirm(`Close ${selectedIds.size} tabs?`)) {
+        await chrome.tabs.remove(Array.from(selectedIds));
+        selectedIds.clear();
+        await refreshState();
+        render();
+      }
+    });
+    
+    // Panic Trigger on right-click
+    btnClose.addEventListener('contextmenu', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      chrome.runtime.sendMessage({ action: 'triggerPanic' }, (response) => {
+        if (response) window.close();
+      });
+    });
+  }
 
   document.getElementById('btn-discard')?.addEventListener('click', async () => {
     if (selectedIds.size === 0) return;
@@ -361,4 +375,44 @@ function setupEventListeners() {
     const tabs = await chrome.tabs.query({ audible: true });
     for (const t of tabs) { await chrome.tabs.update(t.id, { muted: true }); }
   });
+
+  const historyBtn = document.getElementById('btn-delete-history');
+  if (historyBtn) {
+    historyBtn.addEventListener('click', async () => {
+      if (selectedIds.size === 0) return;
+
+      const selectedTabs = allWindows.flatMap(w => w.tabs).filter(t => selectedIds.has(t.id));
+      const urls = selectedTabs.map(t => t.url);
+      const domains = new Set(urls.map(u => {
+        try { return new URL(u).hostname.replace('www.', ''); } catch(e) { return null; }
+      }).filter(d => d));
+
+      const choice = prompt(
+        `Delete history for ${selectedIds.size} tabs?\n\n` +
+        `Type '1' to delete ONLY these specific URLs.\n` +
+        `Type '2' to delete ALL history for these domains: ${Array.from(domains).join(', ')}`
+      );
+
+      if (choice === '1') {
+        for (const url of urls) {
+          await chrome.history.deleteUrl({ url });
+        }
+        alert(`History cleared for ${urls.length} specific URLs.`);
+      } else if (choice === '2') {
+        for (const domain of domains) {
+          const historyItems = await chrome.history.search({ text: domain, maxResults: 10000, startTime: 0 });
+          const itemsToRemove = historyItems.filter(item => {
+            try { return new URL(item.url).hostname.replace('www.', '') === domain; } catch(e) { return false; }
+          });
+          for (const item of itemsToRemove) {
+            await chrome.history.deleteUrl({ url: item.url });
+          }
+        }
+        alert(`History cleared for ${domains.size} domains.`);
+      }
+      
+      selectedIds.clear();
+      render();
+    });
+  }
 }

@@ -1,5 +1,49 @@
 import { getTabMeta, saveTabMeta, archiveTab, cleanupOldMeta } from './storage.js';
 
+const ADULT_DOMAINS = [
+  'pornhub.com', 'xvideos.com', 'xnxx.com', 'xhamster.com', 'youporn.com', 
+  'redtube.com', 'onlyfans.com', 'chaturbate.com', 'bongacams.com', 
+  'livejasmin.com', 'stripchat.com', 'cam4.com', 'xhamster live'
+];
+
+// --- Panic Logic (Shared) ---
+async function executePanicClose() {
+  const [allTabs, windows] = await Promise.all([
+    chrome.tabs.query({}),
+    chrome.windows.getAll({ windowTypes: ['normal'] })
+  ]);
+
+  const adultTabs = allTabs.filter(tab => {
+    try {
+      const host = new URL(tab.url).hostname.replace('www.', '');
+      return ADULT_DOMAINS.some(domain => host.includes(domain));
+    } catch(e) { return false; }
+  });
+
+  // CRITICAL FIX: If no adult tabs, do NOTHING. Don't swap windows.
+  if (adultTabs.length === 0) {
+    console.log("Panic aborted: No targets found.");
+    return;
+  }
+
+  const win1 = windows.sort((a, b) => a.id - b.id)[0];
+  const win1Tabs = allTabs.filter(t => t.windowId === win1.id);
+  const win1SafeTabs = win1Tabs.filter(t => !adultTabs.find(at => at.id === t.id));
+
+  // Visual Swap
+  const newWin = await chrome.windows.create({ focused: true, state: 'maximized' });
+  
+  if (win1SafeTabs.length > 0) {
+    await chrome.tabs.move(win1SafeTabs.map(t => t.id), { windowId: newWin.id, index: -1 });
+    const defaultTab = (await chrome.tabs.query({ windowId: newWin.id }))[0];
+    if (defaultTab) chrome.tabs.remove(defaultTab.id);
+  }
+
+  await chrome.tabs.move(adultTabs.map(t => t.id), { windowId: win1.id, index: -1 });
+  await chrome.windows.update(win1.id, { state: 'minimized' });
+  await chrome.tabs.remove(adultTabs.map(t => t.id));
+}
+
 // --- Tab Tracking & Metadata ---
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
@@ -84,6 +128,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return { status: "success", url };
       }
 
+      if (request.action === 'triggerPanic') {
+        await executePanicClose();
+        return { status: "success" };
+      }
+
       return { status: "unhandled" };
     } catch (e) {
       console.error("Handler error:", e);
@@ -93,6 +142,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   handleMessage().then(sendResponse);
   return true; // Keep channel open
+});
+
+// --- Commands ---
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "panic-close") {
+    executePanicClose();
+  }
 });
 
 // --- Maintenance Alarms ---

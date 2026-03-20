@@ -48,5 +48,14 @@
   },
   "chrome_url_overrides": {
     "newtab": "dashboard.html"
+  },
+  "commands": {
+    "panic-close": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Trigger Instant Panic Close"
+    }
   }
 }
