@@ -4,6 +4,7 @@ let allWindows = [];
 let currentView = 'grid'; 
 let selectedIds = new Set();
 let activeTabId = null;
+let activeWindowId = null;
 let tabMetas = {};
 let isAutoFitting = false;
 let settings = {
@@ -76,7 +77,10 @@ channel.onmessage = (msg) => {
 
 async function refreshState() {
   const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  if (activeTab) activeTabId = activeTab.id;
+  if (activeTab) {
+    activeTabId = activeTab.id;
+    activeWindowId = activeTab.windowId;
+  }
 
   allWindows = await chrome.windows.getAll({ populate: true });
   for (const win of allWindows) {
@@ -100,6 +104,7 @@ function render() {
   allWindows.forEach((win, index) => {
     const pane = document.createElement('div');
     pane.className = 'window-pane';
+    if (win.id === activeWindowId) pane.classList.add('active-window');
     
     const winHeader = document.createElement('div');
     winHeader.className = 'window-header';

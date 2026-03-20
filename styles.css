@@ -73,13 +73,18 @@ body.density-tiny { --tile-size: 24px; --favicon-size: 16px; --grid-gap: 4px; }
   display: flex;
   flex-direction: column;
   background: white;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border); /* Thicker border for better state visibility */
   border-radius: 8px;
   overflow: hidden;
   flex-shrink: 0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   width: fit-content;
   max-width: 100%;
+}
+
+/* Active Window State */
+.window-pane.active-window {
+  border-color: #10b981 !important; /* Green border */
 }
 
 .window-header {
@@ -94,6 +99,10 @@ body.density-tiny { --tile-size: 24px; --favicon-size: 16px; --grid-gap: 4px; }
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.window-pane.active-window .window-header {
+  background: #d1fae5 !important; /* Light green background for the active window header */
 }
 
 .window-header .count-badge {
