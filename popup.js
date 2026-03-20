@@ -6,7 +6,8 @@ let selectedIds = new Set();
 let tabMetas = {};
 let isAutoFitting = false;
 let settings = {
-  density: 'normal', // normal, compact, tiny
+  density: 'normal', 
+  calculatedCols: 5,
   narrowMode: false,
   exactSearch: false,
   primaryAction: 'switch',
@@ -35,21 +36,28 @@ async function saveSettings() {
 }
 
 function applyLayoutSettings() {
-  document.body.classList.remove('density-compact', 'density-tiny', 'force-narrow');
+  document.body.classList.remove('density-compact', 'density-tiny');
   if (settings.density === 'compact') document.body.classList.add('density-compact');
   if (settings.density === 'tiny') document.body.classList.add('density-tiny');
-  if (settings.narrowMode) document.body.classList.add('force-narrow');
   
-  // Update UI state
+  let currentCols = 5;
+  if (settings.autoFit) {
+    currentCols = settings.calculatedCols || 5; 
+  } else if (settings.narrowMode) {
+    currentCols = 3;
+  }
+  
+  document.documentElement.style.setProperty('--cols', currentCols);
+  
   const densitySelect = document.getElementById('density-select');
   if (densitySelect) {
     densitySelect.value = settings.density;
     densitySelect.disabled = settings.autoFit;
   }
-  const narrowCheck = document.getElementById('narrow-toggle');
-  if (narrowCheck) {
-    narrowCheck.checked = settings.narrowMode;
-    narrowCheck.disabled = settings.autoFit;
+  const narrowToggle = document.getElementById('narrow-toggle');
+  if (narrowToggle) {
+    narrowToggle.checked = settings.narrowMode;
+    narrowToggle.disabled = settings.autoFit;
   }
   const autoFitToggle = document.getElementById('auto-fit-toggle');
   if (autoFitToggle) autoFitToggle.checked = settings.autoFit;
@@ -79,15 +87,19 @@ function render() {
   if (!canvas) return;
   canvas.innerHTML = '';
   
-  const query = document.getElementById('search').value.toLowerCase();
+  const query = document.getElementById('search').value.toLowerCase().trim();
+  const starFilter = parseInt(document.getElementById('star-filter')?.value || '0');
   
+  const normalize = (u) => u.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+  const normalizedQuery = normalize(query);
+
   allWindows.forEach((win, index) => {
     const pane = document.createElement('div');
     pane.className = 'window-pane';
     
     const winHeader = document.createElement('div');
     winHeader.className = 'window-header';
-    winHeader.innerText = `Window ${index + 1} (${win.tabs.length})`;
+    winHeader.innerHTML = `<span>Window ${index + 1}</span><span class="count-badge">${win.tabs.length}</span>`;
     pane.appendChild(winHeader);
     
     const container = document.createElement('div');
@@ -100,12 +112,13 @@ function render() {
       const meta = tabMetas[tab.url] || {};
       const title = (meta.customTitle || tab.title || "").toLowerCase();
       
+      if (starFilter > 0 && (meta.importancia || 0) < starFilter) return;
+
       let match = false;
       if (query === '') {
         match = true;
       } else if (settings.exactSearch) {
-        const domain = new URL(tab.url).hostname.replace('www.', '');
-        match = tab.url.toLowerCase() === query || domain.toLowerCase() === query;
+        match = normalize(tab.url) === normalizedQuery;
       } else {
         match = title.includes(query) || tab.url.toLowerCase().includes(query);
       }
@@ -119,34 +132,28 @@ function render() {
       const faviconUrl = `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(tab.url)}&size=32`;
       const displayTitle = meta.customTitle || tab.title;
 
-      el.title = displayTitle; // Native tooltip as fallback
-
       el.innerHTML = currentView === 'list' ? `
         <img class="favicon" src="${faviconUrl}">
         <span class="tab-title">${displayTitle}</span>
+        ${meta.importancia > 0 ? `<span style="color:#fbbf24; margin-left: auto;">★${meta.importancia}</span>` : ''}
       ` : `
         <img class="tile-favicon" src="${faviconUrl}">
         ${tab.audible ? '<div class="grid-audio">🔊</div>' : ''}
         ${meta.importancia > 0 ? `<div class="grid-star">★${meta.importancia}</div>` : ''}
       `;
 
-      // Custom Tooltip Logic
       el.addEventListener('mouseenter', (e) => {
         const tooltip = document.getElementById('tooltip');
-        tooltip.innerHTML = `<strong>${displayTitle}</strong><br><small>${tab.url}</small>`;
+        tooltip.innerHTML = `<strong>${displayTitle}</strong><br><small>${tab.url}</small><br><span style="color:#fbbf24;">${'★'.repeat(meta.importancia || 0)}</span> <small>(Alt+1-5 to rate)</small>`;
         tooltip.style.display = 'block';
       });
-
       el.addEventListener('mousemove', (e) => {
         const tooltip = document.getElementById('tooltip');
         tooltip.style.left = (e.clientX + 15) + 'px';
         tooltip.style.top = (e.clientY + 15) + 'px';
       });
-
-      el.addEventListener('mouseleave', () => {
-        document.getElementById('tooltip').style.display = 'none';
-      });
-
+      el.addEventListener('mouseleave', () => { document.getElementById('tooltip').style.display = 'none'; });
+      
       el.addEventListener('click', async (e) => {
         if (e.ctrlKey || e.metaKey) {
           if (selectedIds.has(tab.id)) selectedIds.delete(tab.id); else selectedIds.add(tab.id);
@@ -156,6 +163,17 @@ function render() {
           chrome.windows.update(win.id, { focused: true });
         }
       });
+
+      el.addEventListener('keydown', async (e) => {
+        if (e.altKey && e.key >= '1' && e.key <= '5') {
+          const val = parseInt(e.key);
+          meta.importancia = meta.importancia === val ? 0 : val;
+          await saveTabMeta(meta);
+          channel.postMessage({ action: 'update_meta', url: tab.url, meta: meta });
+          render();
+        }
+      });
+      el.tabIndex = 0; 
 
       container.appendChild(el);
     });
@@ -174,45 +192,66 @@ async function autoFit() {
   if (isAutoFitting) return;
   isAutoFitting = true;
 
+  const canvas = document.getElementById('canvas');
+  if (!canvas) { isAutoFitting = false; return; }
+
   const configs = [
-    { density: 'normal', narrowMode: false },
-    { density: 'normal', narrowMode: true },
-    { density: 'compact', narrowMode: false },
-    { density: 'compact', narrowMode: true },
-    { density: 'tiny', narrowMode: false },
-    { density: 'tiny', narrowMode: true },
+    { d: 'normal', c: 5 },
+    { d: 'normal', c: 4 },
+    { d: 'normal', c: 3 },
+    { d: 'compact', c: 3 },
+    { d: 'tiny', c: 3 },
   ];
 
   for (const config of configs) {
-    settings.density = config.density;
-    settings.narrowMode = config.narrowMode;
+    settings.density = config.d;
+    settings.calculatedCols = config.c;
     applyLayoutSettings();
-    render();
 
-    // Give the browser a moment to layout
     await new Promise(r => requestAnimationFrame(r));
 
-    const canvas = document.getElementById('canvas');
     const hasHorizontal = canvas.scrollWidth > canvas.clientWidth;
-    
-    const scrollAreas = document.querySelectorAll('.scroll-area');
-    let hasVertical = false;
-    for (const sa of scrollAreas) {
-      if (sa.scrollHeight > sa.clientHeight) {
-        hasVertical = true;
-        break;
-      }
-    }
-
-    if (!hasHorizontal && !hasVertical) {
-      break; // Found a fit!
-    }
+    if (!hasHorizontal) break;
   }
+  
   isAutoFitting = false;
   saveSettings();
 }
 
 function setupEventListeners() {
+  const pullUrl = async (mode = 'domain') => {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (tab && tab.url) {
+      try {
+        const url = new URL(tab.url);
+        let val = "";
+        if (mode === 'domain') {
+          val = url.hostname.replace('www.', '');
+        } else {
+          val = tab.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        }
+        document.getElementById('search').value = val;
+        render();
+      } catch(e) {
+        document.getElementById('search').value = tab.url;
+        render();
+      }
+    }
+  };
+
+  const btnPull = document.getElementById('btn-pull');
+  if (btnPull) {
+    btnPull.addEventListener('click', (e) => {
+      e.preventDefault();
+      pullUrl('domain');
+    });
+    btnPull.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      pullUrl('full');
+    });
+    btnPull.title = "Click: Pull Domain\nRight-Click: Pull Full URL";
+  }
+
   document.getElementById('search').addEventListener('input', render);
   document.getElementById('clear-search').addEventListener('click', () => {
     document.getElementById('search').value = '';
@@ -221,11 +260,19 @@ function setupEventListeners() {
 
   document.getElementById('auto-fit-toggle')?.addEventListener('change', (e) => {
     settings.autoFit = e.target.checked;
-    if (settings.autoFit) {
-      autoFit();
-    } else {
+    if (settings.autoFit) autoFit();
+    else {
+      settings.calculatedCols = 5; 
       applyLayoutSettings();
+      render();
     }
+    saveSettings();
+  });
+
+  document.getElementById('narrow-toggle')?.addEventListener('change', (e) => {
+    settings.narrowMode = e.target.checked;
+    applyLayoutSettings();
+    render();
     saveSettings();
   });
 
@@ -234,6 +281,8 @@ function setupEventListeners() {
     saveSettings();
     render();
   });
+
+  document.getElementById('star-filter').addEventListener('change', render);
 
   document.getElementById('view-toggle').addEventListener('click', () => {
     currentView = currentView === 'list' ? 'grid' : 'list';
@@ -245,7 +294,6 @@ function setupEventListeners() {
     chrome.tabs.create({ url: 'dashboard.html' });
   });
 
-  // Settings Pane
   document.getElementById('settings-toggle').addEventListener('click', () => {
     document.getElementById('settings-pane').classList.add('open');
   });
@@ -254,21 +302,10 @@ function setupEventListeners() {
     document.getElementById('settings-pane').classList.remove('open');
   });
 
-  // Wiring up new settings elements (I'll need to add them to popup.html too)
   const densitySelect = document.getElementById('density-select');
   if (densitySelect) {
     densitySelect.addEventListener('change', (e) => {
       settings.density = e.target.value;
-      saveSettings();
-      applyLayoutSettings();
-      render();
-    });
-  }
-
-  const narrowToggle = document.getElementById('narrow-toggle');
-  if (narrowToggle) {
-    narrowToggle.addEventListener('change', (e) => {
-      settings.narrowMode = e.target.checked;
       saveSettings();
       applyLayoutSettings();
       render();
@@ -288,17 +325,13 @@ function setupEventListeners() {
 
   document.getElementById('btn-discard')?.addEventListener('click', async () => {
     if (selectedIds.size === 0) return;
-    for (const id of selectedIds) {
-      await chrome.tabs.discard(id);
-    }
+    for (const id of selectedIds) { await chrome.tabs.discard(id); }
     selectedIds.clear();
     render();
   });
 
   document.getElementById('btn-mute-all')?.addEventListener('click', async () => {
     const tabs = await chrome.tabs.query({ audible: true });
-    for (const t of tabs) {
-      await chrome.tabs.update(t.id, { muted: true });
-    }
+    for (const t of tabs) { await chrome.tabs.update(t.id, { muted: true }); }
   });
 }

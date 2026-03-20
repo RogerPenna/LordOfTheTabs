@@ -88,31 +88,6 @@ function setupEventListeners() {
     }
   });
 
-  document.getElementById('btn-merge-duplicates').addEventListener('click', async () => {
-    const urlGroups = {};
-    allTabs.forEach(tab => {
-      if (!urlGroups[tab.url]) urlGroups[tab.url] = [];
-      urlGroups[tab.url].push(tab);
-    });
-    for (const url in urlGroups) {
-      if (urlGroups[url].length > 1) {
-        const group = urlGroups[url].sort((a, b) => b.meta.ultimo_acesso - a.meta.ultimo_acesso);
-        await chrome.tabs.remove(group.slice(1).map(t => t.id));
-      }
-    }
-    await loadData();
-    render();
-  });
-
-  document.querySelectorAll('th.sortable').forEach(th => {
-    th.addEventListener('click', () => {
-      const key = th.dataset.sort;
-      if (sortConfig.key === key) sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
-      else { sortConfig.key = key; sortConfig.direction = 'desc'; }
-      render();
-    });
-  });
-
   document.querySelectorAll('.col-filter').forEach(input => {
     input.addEventListener('input', (e) => {
       const col = e.target.dataset.col;
@@ -147,6 +122,9 @@ function setupViewNavigation() {
 }
 
 function getProcessedData() {
+  const normalize = (u) => u.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+  const normalizedQuery = normalize(filters.url);
+
   let filtered = allTabs.filter(tab => {
     const titleMatch = (tab.meta.customTitle || tab.title).toLowerCase().includes(filters.title);
     
@@ -154,8 +132,7 @@ function getProcessedData() {
     if (filters.url === '') {
       urlMatch = true;
     } else if (filters.exactUrl) {
-      // Exact match means either the full URL matches exactly OR the domain matches exactly
-      urlMatch = tab.url.toLowerCase() === filters.url || tab.domain.toLowerCase() === filters.url;
+      urlMatch = normalize(tab.url) === normalizedQuery;
     } else {
       urlMatch = tab.url.toLowerCase().includes(filters.url);
     }
@@ -261,28 +238,22 @@ function renderCharts() {
   const containerMixed = document.getElementById('chart-mixed');
   if (!containerDomains || !containerMemory || !containerMixed) return;
 
-  // 1. Domains Bar Chart
   const domainCounts = {};
   allTabs.forEach(t => domainCounts[t.domain] = (domainCounts[t.domain] || 0) + 1);
   const sortedDomains = Object.entries(domainCounts).sort((a,b) => b[1] - a[1]).slice(0, 10);
-  
   containerDomains.innerHTML = createBarChart(sortedDomains, '#3b82f6');
 
-  // 2. Memory per Window
   const windowMemory = {};
   allTabs.forEach(t => windowMemory[t.windowIndex] = (windowMemory[t.windowIndex] || 0) + t.memory);
   const sortedMemory = Object.entries(windowMemory).sort((a,b) => b[1] - a[1]);
-  
   containerMemory.innerHTML = createBarChart(sortedMemory, '#10b981', 'MB');
 
-  // 3. Mixed "Pizza" (actually just another visualization)
-  containerMixed.innerHTML = `<div style="padding: 20px; text-align: center; color: #64748b;">
-    <h4>Top Domains by Memory Usage</h4>
+  containerMixed.innerHTML = `<div style="padding: 20px; text-align: center;">
+    <h4>Top Domains</h4>
     <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 15px;">
       ${sortedDomains.map(([domain, count]) => `
-        <div style="background: #f1f5f9; padding: 10px; border-radius: 8px; min-width: 100px;">
-          <div style="font-weight: bold; font-size: 14px;">${domain}</div>
-          <div style="font-size: 12px; color: #3b82f6;">${count} Tabs</div>
+        <div style="background: #f1f5f9; padding: 10px; border-radius: 8px;">
+          <b>${domain}</b>: ${count} Tabs
         </div>
       `).join('')}
     </div>
@@ -296,11 +267,11 @@ function createBarChart(data, color, unit = 'tabs') {
     <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px;">
       ${data.map(([label, val]) => `
         <div style="display: flex; align-items: center; gap: 10px;">
-          <div style="width: 100px; text-align: right; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${label}">${label}</div>
-          <div style="flex-grow: 1; height: 16px; background: #f1f5f9; border-radius: 8px; overflow: hidden;">
-            <div style="height: 100%; width: ${(val/max)*100}%; background: ${color}; transition: width 0.3s;"></div>
+          <div style="width: 100px; text-align: right; font-size: 11px; overflow: hidden; text-overflow: ellipsis;">${label}</div>
+          <div style="flex-grow: 1; height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden;">
+            <div style="height: 100%; width: ${(val/max)*100}%; background: ${color};"></div>
           </div>
-          <div style="width: 50px; font-size: 11px; font-weight: bold;">${val}${unit === 'tabs' ? '' : unit}</div>
+          <div style="width: 40px; font-size: 11px;">${val}${unit === 'tabs' ? '' : unit}</div>
         </div>
       `).join('')}
     </div>
@@ -311,16 +282,9 @@ function renderVault() {
   const tbody = document.getElementById('vault-table-body');
   if (!tbody) return;
   tbody.innerHTML = archivedTabs.length ? '' : '<tr><td colspan="5" style="text-align:center;">Vault is empty</td></tr>';
-  
   archivedTabs.forEach(tab => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><img src="logo_transparent.png" width="16"></td>
-      <td>${tab.title}</td>
-      <td class="truncate">${tab.url}</td>
-      <td>${new Date(tab.archivedAt).toLocaleString()}</td>
-      <td><button class="btn-restore primary">Restore</button></td>
-    `;
+    tr.innerHTML = `<td>${tab.title}</td><td class="truncate">${tab.url}</td><td><button class="btn-restore primary">Restore</button></td>`;
     tr.querySelector('.btn-restore').addEventListener('click', async () => {
       await chrome.tabs.create({ url: tab.url });
       await deleteArchivedTab(tab.url);
@@ -335,20 +299,12 @@ function renderWorkspaces() {
   const container = document.getElementById('workspaces-list');
   if (!container) return;
   container.innerHTML = savedWorkspaces.length ? '' : '<div style="padding:20px;">No workspaces</div>';
-  
   savedWorkspaces.forEach(ws => {
     const card = document.createElement('div');
     card.className = 'workspace-card';
-    card.innerHTML = `
-      <div class="workspace-header"><b>${ws.name}</b> <button class="danger btn-delete-ws">Delete</button></div>
-      <div class="workspace-stats">${ws.tabCount} Tabs</div>
-      <button class="primary btn-restore-ws">Restore All</button>
-    `;
+    card.innerHTML = `<b>${ws.name}</b> (${ws.tabCount} tabs) <button class="primary btn-restore-ws">Restore</button>`;
     card.querySelector('.btn-restore-ws').addEventListener('click', async () => {
       for (const t of ws.tabs) await chrome.tabs.create({ url: t.url, active: false });
-    });
-    card.querySelector('.btn-delete-ws').addEventListener('click', async () => {
-      if (confirm('Delete?')) { await deleteWorkspace(ws.id); await loadData(); render(); }
     });
     container.appendChild(card);
   });
