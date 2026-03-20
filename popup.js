@@ -3,6 +3,7 @@ import { getTabMeta, saveTabMeta } from './storage.js';
 let allWindows = [];
 let currentView = 'grid'; 
 let selectedIds = new Set();
+let activeTabId = null;
 let tabMetas = {};
 let isAutoFitting = false;
 let settings = {
@@ -74,6 +75,9 @@ channel.onmessage = (msg) => {
 };
 
 async function refreshState() {
+  const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (activeTab) activeTabId = activeTab.id;
+
   allWindows = await chrome.windows.getAll({ populate: true });
   for (const win of allWindows) {
     for (const tab of win.tabs) {
@@ -128,6 +132,7 @@ function render() {
       const el = document.createElement('div');
       el.className = `tab-element ${currentView === 'list' ? 'list-item' : 'grid-tile'}`;
       if (selectedIds.has(tab.id)) el.classList.add('selected');
+      if (tab.id === activeTabId) el.classList.add('active-tab');
       
       const faviconUrl = `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(tab.url)}&size=32`;
       const displayTitle = meta.customTitle || tab.title;

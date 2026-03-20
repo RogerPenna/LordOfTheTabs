@@ -119,6 +119,18 @@ body.density-tiny { --tile-size: 24px; --favicon-size: 16px; --grid-gap: 4px; }
 }
 .grid-tile:hover { border-color: var(--primary); background: #f1f5f9; }
 .grid-tile.selected { border: 2px solid var(--primary); background: #eff6ff; }
+
+/* Current Active Tab (Greenish - Enhanced) */
+.grid-tile.active-tab {
+  background: #d1fae5 !important; 
+  border: 2px solid #059669 !important;
+}
+
+/* If Active AND Selected: keep greenish bg, but blue border wins */
+.grid-tile.active-tab.selected {
+  background: #d1fae5 !important;
+  border-color: var(--primary) !important;
+}
 .tile-favicon { width: var(--favicon-size); height: var(--favicon-size); object-fit: contain; pointer-events: none; }
 
 .grid-audio { position: absolute; top: 2px; right: 2px; background: rgba(255,255,255,0.8); border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; }
