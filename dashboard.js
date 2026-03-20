@@ -12,19 +12,18 @@ let sortConfig = { key: 'importance', direction: 'desc' };
 let filters = { title: '', url: '', age: 0, importance: 0, exactUrl: false };
 let groupBy = 'window'; 
 let selectedIds = new Set();
+let selectedGroupKeys = new Set();
+let activeTabId = null;
+let activeWindowId = null;
 let currentView = 'table';
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Check if we should redirect back to Chrome's default new tab
   const data = await chrome.storage.local.get('popupSettings');
   const settings = data.popupSettings || {};
   
-  // If setDashboardAsNewTab is false AND we are in a new tab (not manually opened)
-  // We detect "new tab" by checking if the URL is exactly our dashboard.html without params
   if (settings.setDashboardAsNewTab === false) {
     const url = new URL(window.location.href);
     if (!url.searchParams.has('manual')) {
-      // Redirect to Chrome's default New Tab page
       window.location.href = "chrome-search://local-ntp/local-ntp.html"; 
       return;
     }
@@ -43,13 +42,20 @@ channel.onmessage = (msg) => {
 };
 
 async function loadData() {
-  const [tabs, windows, archived, workspaces] = await Promise.all([
+  const [tabs, windows, archived, workspaces, activeTabs] = await Promise.all([
     chrome.tabs.query({}),
     chrome.windows.getAll(),
     getArchivedTabs(),
-    getAllWorkspaces()
+    getAllWorkspaces(),
+    chrome.tabs.query({ active: true, lastFocusedWindow: true })
   ]);
   
+  const activeTab = activeTabs[0];
+  if (activeTab) {
+    activeTabId = activeTab.id;
+    activeWindowId = activeTab.windowId;
+  }
+
   archivedTabs = archived;
   savedWorkspaces = workspaces;
   const windowMap = new Map();
@@ -78,6 +84,7 @@ async function loadData() {
 function setupEventListeners() {
   document.getElementById('group-by-select').addEventListener('change', (e) => {
     groupBy = e.target.value;
+    selectedGroupKeys.clear();
     render();
   });
 
@@ -89,7 +96,10 @@ function setupEventListeners() {
   document.getElementById('select-all').addEventListener('change', (e) => {
     const processed = getProcessedData();
     if (e.target.checked) processed.forEach(t => selectedIds.add(t.id));
-    else processed.forEach(t => selectedIds.delete(t.id));
+    else {
+      selectedIds.clear();
+      selectedGroupKeys.clear();
+    }
     render();
   });
 
@@ -98,6 +108,7 @@ function setupEventListeners() {
     if (confirm(`Close ${selectedIds.size} tabs?`)) {
       await chrome.tabs.remove(Array.from(selectedIds));
       selectedIds.clear();
+      selectedGroupKeys.clear();
       await loadData();
       render();
     }
@@ -197,9 +208,24 @@ function renderTable(processed) {
     });
 
     for (const [key, tabs] of Object.entries(groups)) {
+      const isGroupActive = tabs.some(t => t.id === activeTabId);
+      const isGroupSelected = selectedGroupKeys.has(key);
+
       const headerTr = document.createElement('tr');
-      headerTr.className = 'group-header';
-      headerTr.innerHTML = `<td colspan="10" style="background: #f1f5f9; font-weight: bold; padding: 8px 12px; border-bottom: 2px solid #cbd5e1;">${key} (${tabs.length})</td>`;
+      headerTr.className = `group-header ${isGroupActive ? 'group-active' : ''} ${isGroupSelected ? 'group-selected' : ''}`;
+      headerTr.innerHTML = `<td colspan="10" style="font-weight: bold; padding: 8px 12px;">${key} (${tabs.length})</td>`;
+      
+      headerTr.addEventListener('click', () => {
+        if (selectedGroupKeys.has(key)) {
+          selectedGroupKeys.delete(key);
+          tabs.forEach(t => selectedIds.delete(t.id));
+        } else {
+          selectedGroupKeys.add(key);
+          tabs.forEach(t => selectedIds.add(t.id));
+        }
+        render();
+      });
+
       tbody.appendChild(headerTr);
       tabs.forEach(tab => renderRow(tbody, tab));
     }
@@ -209,6 +235,7 @@ function renderTable(processed) {
 function renderRow(tbody, tab) {
   const tr = document.createElement('tr');
   if (selectedIds.has(tab.id)) tr.classList.add('row-selected');
+  if (tab.id === activeTabId) tr.classList.add('row-active');
   
   const displayTitle = tab.meta.customTitle || tab.title;
   const faviconUrl = `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(tab.url)}&size=32`;
