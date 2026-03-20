@@ -87,6 +87,11 @@ body.density-tiny { --tile-size: 24px; --favicon-size: 16px; --grid-gap: 4px; }
   border-color: #10b981 !important; /* Green border */
 }
 
+/* Selected Window State (Blue - Precedence) */
+.window-pane.selected-window {
+  border-color: var(--primary) !important;
+}
+
 .window-header {
   padding: 6px 8px;
   background: #f1f5f9;

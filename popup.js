@@ -3,6 +3,7 @@ import { getTabMeta, saveTabMeta } from './storage.js';
 let allWindows = [];
 let currentView = 'grid'; 
 let selectedIds = new Set();
+let selectedWindowIds = new Set();
 let activeTabId = null;
 let activeWindowId = null;
 let tabMetas = {};
@@ -90,7 +91,7 @@ async function refreshState() {
   }
 }
 
-function render() {
+function render(skipAutoFit = false) {
   const canvas = document.getElementById('canvas');
   if (!canvas) return;
   canvas.innerHTML = '';
@@ -105,10 +106,18 @@ function render() {
     const pane = document.createElement('div');
     pane.className = 'window-pane';
     if (win.id === activeWindowId) pane.classList.add('active-window');
+    if (selectedWindowIds.has(win.id)) pane.classList.add('selected-window');
     
     const winHeader = document.createElement('div');
     winHeader.className = 'window-header';
     winHeader.innerHTML = `<span>Window ${index + 1}</span><span class="count-badge">${win.tabs.length}</span>`;
+    
+    winHeader.addEventListener('click', () => {
+      if (selectedWindowIds.has(win.id)) selectedWindowIds.delete(win.id);
+      else selectedWindowIds.add(win.id);
+      render(true); // Skip auto-fit on selection
+    });
+
     pane.appendChild(winHeader);
     
     const container = document.createElement('div');
@@ -167,7 +176,7 @@ function render() {
       el.addEventListener('click', async (e) => {
         if (e.ctrlKey || e.metaKey) {
           if (selectedIds.has(tab.id)) selectedIds.delete(tab.id); else selectedIds.add(tab.id);
-          render();
+          render(true); // Skip auto-fit on selection
         } else {
           chrome.tabs.update(tab.id, { active: true });
           chrome.windows.update(win.id, { focused: true });
@@ -180,7 +189,7 @@ function render() {
           meta.importancia = meta.importancia === val ? 0 : val;
           await saveTabMeta(meta);
           channel.postMessage({ action: 'update_meta', url: tab.url, meta: meta });
-          render();
+          render(true); // Rating doesn't change layout dimensions
         }
       });
       el.tabIndex = 0; 
@@ -193,7 +202,7 @@ function render() {
     canvas.appendChild(pane);
   });
 
-  if (settings.autoFit && !isAutoFitting) {
+  if (settings.autoFit && !isAutoFitting && !skipAutoFit) {
     autoFit();
   }
 }
