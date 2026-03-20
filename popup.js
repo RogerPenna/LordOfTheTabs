@@ -13,12 +13,15 @@ let settings = {
   calculatedCols: 5,
   narrowMode: false,
   exactSearch: false,
+  setDashboardAsNewTab: true, // Default to true since manifest forces it
   primaryAction: 'switch',
   ghostHover: false,
   autoFit: false
 };
 
-const channel = new BroadcastChannel('tab_sync');
+window.addEventListener('unload', () => {
+  if (channel) channel.close();
+});
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings();
@@ -301,6 +304,11 @@ function setupEventListeners() {
     render();
   });
 
+  document.getElementById('set-newtab-toggle')?.addEventListener('change', (e) => {
+    settings.setDashboardAsNewTab = e.target.checked;
+    saveSettings();
+  });
+
   document.getElementById('star-filter').addEventListener('change', render);
 
   document.getElementById('view-toggle').addEventListener('click', () => {
@@ -310,7 +318,7 @@ function setupEventListeners() {
   });
 
   document.getElementById('btn-expand').addEventListener('click', () => {
-    chrome.tabs.create({ url: 'dashboard.html' });
+    chrome.tabs.create({ url: 'dashboard.html?manual=1' });
   });
 
   document.getElementById('settings-toggle').addEventListener('click', () => {

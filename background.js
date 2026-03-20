@@ -1,4 +1,4 @@
-import { getTabMeta, saveTabMeta, archiveTab } from './storage.js';
+import { getTabMeta, saveTabMeta, archiveTab, cleanupOldMeta } from './storage.js';
 
 // --- Tab Tracking & Metadata ---
 
@@ -14,10 +14,10 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  // Notifica a Dashboard sempre que a URL mudar (essencial para SPAs como Gemini)
   if (changeInfo.url || changeInfo.title) {
     const channel = new BroadcastChannel('tab_sync');
     channel.postMessage({ action: 'update_meta', url: tab.url });
+    channel.close();
   }
 
   if (tab.url && changeInfo.status === 'complete') {
@@ -25,6 +25,12 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (!meta.data_abertura) meta.data_abertura = Date.now();
     meta.ultimo_acesso = Date.now();
     await saveTabMeta(meta);
+  }
+});
+
+chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
+  if (details.url.includes("gemini.google.com")) {
+    chrome.tabs.sendMessage(details.tabId, { action: "SPA_NAVIGATION", url: details.url }).catch(() => {});
   }
 });
 
@@ -44,70 +50,82 @@ chrome.tabs.onCreated.addListener(async (tab) => {
   }
 });
 
-// --- Messaging & Debugging ---
+// --- Messaging & Handlers ---
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'updateActionPopup') {
-    chrome.action.setPopup({ popup: request.enabled ? "" : "popup.html" });
-    return;
-  }
-  
-  if (request.action === 'updateTabMetadata' || request.action === 'UPDATE_GEMINI_TITLE') {
-    const bad = ["gemini", "conversas", "google gemini", "novo chat", "chat"];
-    const isBad = bad.some(b => request.title.toLowerCase().includes(b) && !request.title.toLowerCase().includes(":"));
-    
-    if (isBad && request.action === 'UPDATE_GEMINI_TITLE') return;
-
-    getTabMeta(request.url).then(async (meta) => {
-      // Só salva e notifica se o título realmente mudou no DB
-      if (meta.customTitle !== request.title) {
-        meta.customTitle = request.title;
-        meta.ultimo_acesso = Date.now();
-        await saveTabMeta(meta);
-        
-        const channel = new BroadcastChannel('tab_sync');
-        channel.postMessage({ action: 'update_meta', url: request.url, meta: meta });
+  const handleMessage = async () => {
+    try {
+      if (request.action === 'updateActionPopup') {
+        chrome.action.setPopup({ popup: request.enabled ? "" : "popup.html" });
+        return { status: "success" };
       }
-      sendResponse({ status: "success" });
-    });
-    return true; 
-  }
+      
+      if (request.action === 'updateTabMetadata' || request.action === 'UPDATE_GEMINI_TITLE') {
+        const bad = ["gemini", "conversas", "google gemini", "novo chat", "chat"];
+        const isBad = bad.some(b => request.title.toLowerCase().includes(b) && !request.title.toLowerCase().includes(":"));
+        
+        if (isBad && request.action === 'UPDATE_GEMINI_TITLE') return { status: "ignored" };
 
-  if (request.action === 'backupToSheets') {
-    pushToSheets(request.data).then(sendResponse).catch(err => {
-      console.error("Backup failed:", err);
-      sendResponse({error: err.message});
-    });
-    return true; 
-  }
+        const meta = await getTabMeta(request.url);
+        if (meta.customTitle !== request.title) {
+          meta.customTitle = request.title;
+          meta.ultimo_acesso = Date.now();
+          await saveTabMeta(meta);
+          
+          const channel = new BroadcastChannel('tab_sync');
+          channel.postMessage({ action: 'update_meta', url: request.url, meta: meta });
+          channel.close();
+        }
+        return { status: "success" };
+      }
+
+      if (request.action === 'backupToSheets') {
+        const url = await pushToSheets(request.data);
+        return { status: "success", url };
+      }
+
+      return { status: "unhandled" };
+    } catch (e) {
+      console.error("Handler error:", e);
+      return { status: "error", message: e.message };
+    }
+  };
+
+  handleMessage().then(sendResponse);
+  return true; // Keep channel open
 });
 
-// --- Auto-Archive Logic ---
+// --- Maintenance Alarms ---
 
 async function autoArchiveTabs() {
-  const tabs = await chrome.tabs.query({ pinned: false });
-  const fortyEightHours = 48 * 60 * 60 * 1000;
-  const now = Date.now();
+  try {
+    const tabs = await chrome.tabs.query({ pinned: false });
+    const fortyEightHours = 48 * 60 * 60 * 1000;
+    const now = Date.now();
 
-  for (const tab of tabs) {
-    if (!tab.url || tab.url.startsWith('chrome://')) continue;
-    const meta = await getTabMeta(tab.url);
-    if (now - meta.ultimo_acesso > fortyEightHours && meta.importancia < 4) {
-      await archiveTab({
-        url: tab.url,
-        title: meta.customTitle || tab.title,
-        favIconUrl: tab.favIconUrl,
-        archivedAt: now,
-        originalMeta: meta
-      });
-      await chrome.tabs.remove(tab.id);
+    for (const tab of tabs) {
+      if (!tab.url || tab.url.startsWith('chrome://')) continue;
+      const meta = await getTabMeta(tab.url);
+      if (now - meta.ultimo_acesso > fortyEightHours && meta.importancia < 4) {
+        await archiveTab({
+          url: tab.url,
+          title: meta.customTitle || tab.title,
+          favIconUrl: tab.favIconUrl,
+          archivedAt: now,
+          originalMeta: meta
+        });
+        await chrome.tabs.remove(tab.id);
+      }
     }
-  }
+  } catch (e) { console.error("Auto-archive error:", e); }
 }
 
 chrome.alarms.create('check_auto_archive', { periodInMinutes: 60 });
+chrome.alarms.create('daily_cleanup', { periodInMinutes: 1440 });
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'check_auto_archive') autoArchiveTabs();
+  if (alarm.name === 'daily_cleanup') cleanupOldMeta();
 });
 
 // --- Google Sheets Integration ---
@@ -145,7 +163,6 @@ async function pushToSheets(data) {
   });
 }
 
-// Extension Icon Behavior
 chrome.action.onClicked.addListener(() => {
   chrome.tabs.create({ url: 'dashboard.html' });
 });

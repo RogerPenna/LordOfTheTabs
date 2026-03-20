@@ -36,15 +36,17 @@ function updateGeminiTitle(force = false) {
 }
 
 const observer = new MutationObserver(() => updateGeminiTitle());
-observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+// Target the navigation/sidebar area specifically if found, otherwise body but with limited scope
+const targetNode = document.querySelector('div[role="navigation"]') || document.body;
+observer.observe(targetNode, { childList: true, subtree: true }); 
 
-// Monitor de mudança de URL (Troca de Chat no Gemini)
-setInterval(() => {
-  if (location.href !== lastUrl) {
-    lastUrl = location.href;
-    lastSavedTitle = ""; // RESET: Força o script a re-validar o título para a nova URL
+// SPA Navigation listener from background.js (Replaces old setInterval)
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.action === "SPA_NAVIGATION") {
+    lastUrl = msg.url;
+    lastSavedTitle = ""; 
     updateGeminiTitle(true);
   }
-}, 1000);
+});
 
 updateGeminiTitle();

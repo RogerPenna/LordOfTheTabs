@@ -12,7 +12,8 @@
     "scripting",
     "history",
     "favicon",
-    "alarms"
+    "alarms",
+    "webNavigation"
   ],
   "host_permissions": [
     "https://gemini.google.com/*"

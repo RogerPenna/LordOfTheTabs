@@ -15,6 +15,21 @@ let selectedIds = new Set();
 let currentView = 'table';
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Check if we should redirect back to Chrome's default new tab
+  const data = await chrome.storage.local.get('popupSettings');
+  const settings = data.popupSettings || {};
+  
+  // If setDashboardAsNewTab is false AND we are in a new tab (not manually opened)
+  // We detect "new tab" by checking if the URL is exactly our dashboard.html without params
+  if (settings.setDashboardAsNewTab === false) {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('manual')) {
+      // Redirect to Chrome's default New Tab page
+      window.location.href = "chrome-search://local-ntp/local-ntp.html"; 
+      return;
+    }
+  }
+
   await loadData();
   setupEventListeners();
   setupViewNavigation();

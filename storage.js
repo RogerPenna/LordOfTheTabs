@@ -132,3 +132,28 @@ export async function deleteWorkspace(id) {
     request.onerror = () => reject(request.error);
   });
 }
+
+export async function cleanupOldMeta() {
+  const db = await openDB();
+  const sixMonthsAgo = Date.now() - (6 * 30 * 24 * 60 * 60 * 1000);
+  
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.openCursor();
+
+    request.onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        const meta = cursor.value;
+        if (meta.ultimo_acesso < sixMonthsAgo && (meta.importancia || 0) === 0) {
+          cursor.delete();
+        }
+        cursor.continue();
+      }
+    };
+
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
