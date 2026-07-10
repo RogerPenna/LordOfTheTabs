@@ -28,6 +28,7 @@
         <button id="view-toggle" class="icon-btn" title="List/Grid Toggle">≣</button>
         <button id="settings-toggle" class="icon-btn" title="Settings">⚙️</button>
         <button id="btn-expand" class="icon-btn" title="Open Dashboard">↗️</button>
+        <button id="btn-help" class="icon-btn" title="Help & Documentation">❓</button>
       </div>
     </div>
   </div>
@@ -117,6 +118,12 @@
           <input type="checkbox" id="dashboard_as_newtab"> Set Dashboard as New Tab
         </label>
         <small style="font-size: 10px; color: #64748b;">Every time you open a new tab, the Dashboard will appear.</small>
+      </div>
+
+      <div class="setting-group" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
+        <label for="panic-domains" style="font-weight: bold; color: var(--danger);">🚫 Panic Mode Domains</label>
+        <textarea id="panic-domains" rows="3" style="width: 100%; font-size: 11px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; resize: vertical; font-family: monospace;" placeholder="domain1.com, domain2.com, ..."></textarea>
+        <small style="font-size: 10px; color: #64748b;">Comma-separated list of domains to close instantly (Ctrl+Shift+Y). Active tab adds itself via Ctrl+Shift+U.</small>
       </div>
     </div>
   </div>

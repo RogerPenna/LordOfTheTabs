@@ -1,6 +1,6 @@
 import { getTabMeta, saveTabMeta, archiveTab, cleanupOldMeta } from './storage.js';
 
-const ADULT_DOMAINS = [
+const DEFAULT_ADULT_DOMAINS = [
   'pornhub.com', 'xvideos.com', 'xnxx.com', 'xhamster.com', 'youporn.com', 
   'redtube.com', 'onlyfans.com', 'chaturbate.com', 'bongacams.com', 
   'livejasmin.com', 'stripchat.com', 'cam4.com', 'xhamster live'
@@ -8,15 +8,18 @@ const ADULT_DOMAINS = [
 
 // --- Panic Logic (Shared) ---
 async function executePanicClose() {
-  const [allTabs, windows] = await Promise.all([
+  const [allTabs, windows, data] = await Promise.all([
     chrome.tabs.query({}),
-    chrome.windows.getAll({ windowTypes: ['normal'] })
+    chrome.windows.getAll({ windowTypes: ['normal'] }),
+    chrome.storage.local.get('panicDomains')
   ]);
+
+  const adultDomains = data.panicDomains || DEFAULT_ADULT_DOMAINS;
 
   const adultTabs = allTabs.filter(tab => {
     try {
-      const host = new URL(tab.url).hostname.replace('www.', '');
-      return ADULT_DOMAINS.some(domain => host.includes(domain));
+      const host = new URL(tab.url).hostname.replace('www.', '').toLowerCase();
+      return adultDomains.some(domain => host.includes(domain.toLowerCase().trim()));
     } catch(e) { return false; }
   });
 
@@ -148,8 +151,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 chrome.commands.onCommand.addListener((command) => {
   if (command === "panic-close") {
     executePanicClose();
+  } else if (command === "add-to-unsafe") {
+    addCurrentDomainToUnsafe();
   }
 });
+
+async function addCurrentDomainToUnsafe() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab || !tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('about:')) return;
+
+    const url = new URL(tab.url);
+    const domain = url.hostname.replace('www.', '').toLowerCase();
+
+    const data = await chrome.storage.local.get('panicDomains');
+    let domains = data.panicDomains || [...DEFAULT_ADULT_DOMAINS];
+
+    if (!domains.some(d => d.toLowerCase().trim() === domain)) {
+      domains.push(domain);
+      await chrome.storage.local.set({ panicDomains: domains });
+
+      // Notify user via native system notification
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'logo_transparent.png',
+        title: 'Domain Blacklisted',
+        message: `"${domain}" has been added to your unsafe domains list.`
+      });
+
+      // Broadcast sync message to update UI (like the settings textarea)
+      const channel = new BroadcastChannel('tab_sync');
+      channel.postMessage({ action: 'update_meta' }); // triggers reload in popup/dashboard
+      channel.close();
+    }
+
+    // Close the blacklisted tab
+    await chrome.tabs.remove(tab.id);
+  } catch (e) {
+    console.error("Error blacklisting domain:", e);
+  }
+}
 
 // --- Maintenance Alarms ---
 

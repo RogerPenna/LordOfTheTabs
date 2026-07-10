@@ -13,13 +13,15 @@ let filters = { title: '', url: '', age: 0, importance: 0, exactUrl: false };
 let groupBy = 'window'; 
 let selectedIds = new Set();
 let selectedGroupKeys = new Set();
+let windowCollapseStates = {};
 let activeTabId = null;
 let activeWindowId = null;
 let currentView = 'table';
+let settings = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
   const data = await chrome.storage.local.get('popupSettings');
-  const settings = data.popupSettings || {};
+  settings = data.popupSettings || {};
   
   if (settings.setDashboardAsNewTab === false) {
     const url = new URL(window.location.href);
@@ -42,13 +44,16 @@ channel.onmessage = (msg) => {
 };
 
 async function loadData() {
-  const [tabs, windows, archived, workspaces, activeTabs] = await Promise.all([
+  const [tabs, windows, archived, workspaces, activeTabs, data] = await Promise.all([
     chrome.tabs.query({}),
     chrome.windows.getAll(),
     getArchivedTabs(),
     getAllWorkspaces(),
-    chrome.tabs.query({ active: true, lastFocusedWindow: true })
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }),
+    chrome.storage.local.get('popupSettings')
   ]);
+  
+  settings = data.popupSettings || {};
   
   const activeTab = activeTabs[0];
   if (activeTab) {
@@ -173,9 +178,9 @@ function setupEventListeners() {
     render();
   });
 
-  document.querySelectorAll('th.sortable').forEach(th => {
-    th.addEventListener('click', () => {
-      const key = th.dataset.sort;
+  document.querySelectorAll('.sortable').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.sort;
       if (sortConfig.key === key) sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
       else { sortConfig.key = key; sortConfig.direction = 'desc'; }
       render();
@@ -189,11 +194,81 @@ function setupEventListeners() {
       filters[col] = (col === 'age' || col === 'importance') ? parseInt(val) || 0 : val;
       render();
     });
+    input.addEventListener('click', (e) => e.stopPropagation());
   });
+
+  document.getElementById('exact-url-toggle')?.addEventListener('click', (e) => e.stopPropagation());
 
   document.getElementById('btn-refresh').addEventListener('click', async () => {
     await loadData();
     render();
+  });
+
+  document.getElementById('btn-help')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'help.html' });
+  });
+
+  document.getElementById('btn-pull-url-header')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('pull-dropdown-menu')?.classList.toggle('show');
+  });
+
+  document.getElementById('btn-pull-domain')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const firstSelectedId = Array.from(selectedIds)[0];
+    const tab = allTabs.find(t => t.id === firstSelectedId);
+    if (tab) {
+      try {
+        const url = new URL(tab.url);
+        const domain = url.hostname.replace('www.', '');
+        const input = document.querySelector('.col-filter[data-col="url"]');
+        if (input) {
+          input.value = domain;
+          filters.url = domain;
+          render();
+        }
+      } catch(err) {
+        const input = document.querySelector('.col-filter[data-col="url"]');
+        if (input) {
+          input.value = tab.url;
+          filters.url = tab.url;
+          render();
+        }
+      }
+    }
+    document.getElementById('pull-dropdown-menu')?.classList.remove('show');
+  });
+
+  document.getElementById('btn-pull-full-url')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const firstSelectedId = Array.from(selectedIds)[0];
+    const tab = allTabs.find(t => t.id === firstSelectedId);
+    if (tab) {
+      const input = document.querySelector('.col-filter[data-col="url"]');
+      if (input) {
+        input.value = tab.url;
+        filters.url = tab.url;
+        render();
+      }
+    }
+    document.getElementById('pull-dropdown-menu')?.classList.remove('show');
+  });
+
+  document.addEventListener('click', () => {
+    document.getElementById('pull-dropdown-menu')?.classList.remove('show');
+  });
+
+  document.querySelectorAll('.btn-clear-filter').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const col = btn.dataset.col;
+      const input = document.querySelector(`.col-filter[data-col="${col}"]`);
+      if (input) {
+        input.value = '';
+        filters[col] = (col === 'age' || col === 'importance') ? 0 : '';
+        render();
+      }
+    });
   });
 }
 
@@ -215,6 +290,27 @@ function setupViewNavigation() {
   });
 }
 
+function matchGhost(url1, url2, scope) {
+  if (!url1 || !url2) return false;
+  try {
+    const u1 = new URL(url1);
+    const u2 = new URL(url2);
+    if (scope === 'url') {
+      return u1.href === u2.href;
+    }
+    const cleanHost = (host) => host.replace(/^www\d*\./, '').replace(/^m\./, '');
+    const host1 = cleanHost(u1.hostname);
+    const host2 = cleanHost(u2.hostname);
+    if (scope === 'subdomain') {
+      return host1 === host2;
+    }
+    // Default is 'domain' (match whole hostname)
+    return u1.hostname === u2.hostname;
+  } catch (e) {
+    return url1.toLowerCase().includes(url2.toLowerCase()) || url2.toLowerCase().includes(url1.toLowerCase());
+  }
+}
+
 function getProcessedData() {
   const normalize = (u) => u.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
   const normalizedQuery = normalize(filters.url);
@@ -226,7 +322,8 @@ function getProcessedData() {
     if (filters.url === '') {
       urlMatch = true;
     } else if (filters.exactUrl) {
-      urlMatch = normalize(tab.url) === normalizedQuery;
+      const scope = settings.ghostScope || 'domain';
+      urlMatch = matchGhost(tab.url, filters.url, scope) || tab.url.toLowerCase() === filters.url.toLowerCase();
     } else {
       urlMatch = tab.url.toLowerCase().includes(filters.url);
     }
@@ -249,6 +346,21 @@ function getProcessedData() {
 function render() {
   const processed = getProcessedData();
   document.getElementById('tab-count').innerText = `${processed.length} / ${allTabs.length} Tabs`;
+  
+  // Toggle disabled state on bulk actions depending on selection size
+  const hasSelection = selectedIds.size > 0;
+  const bulkButtons = [
+    'btn-close-selected', 
+    'btn-discard-selected', 
+    'btn-move-selected', 
+    'btn-bundle-selected', 
+    'btn-delete-history-selected',
+    'btn-pull-url-header'
+  ];
+  bulkButtons.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !hasSelection;
+  });
   
   if (currentView === 'table') renderTable(processed); 
   else if (currentView === 'charts') renderCharts();
@@ -281,9 +393,24 @@ function renderTable(processed) {
 
       const headerTr = document.createElement('tr');
       headerTr.className = `group-header ${isGroupActive ? 'group-active' : ''} ${isGroupSelected ? 'group-selected' : ''}`;
-      headerTr.innerHTML = `<td colspan="10" style="font-weight: bold; padding: 8px 12px;">${key} (${tabs.length})</td>`;
       
-      headerTr.addEventListener('click', () => {
+      const mode = windowCollapseStates[key] || 'full';
+      
+      headerTr.innerHTML = `
+        <td colspan="10" style="padding: 8px 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold;">${key} (${tabs.length})</span>
+            <div class="collapse-controls" style="display: flex; gap: 4px; align-items: center;">
+              <button class="btn-collapse ${mode === 'full' ? 'active' : ''}" data-win="${key}" data-mode="full" title="Expand all tabs">📜 List</button>
+              <button class="btn-collapse ${mode === 'domain' ? 'active' : ''}" data-win="${key}" data-mode="domain" title="Collapse by Domain">🌐 Domain</button>
+              <button class="btn-collapse ${mode === 'url' ? 'active' : ''}" data-win="${key}" data-mode="url" title="Collapse by Exact URL">🔗 URL</button>
+            </div>
+          </div>
+        </td>
+      `;
+
+      headerTr.addEventListener('click', (e) => {
+        if (e.target.closest('.collapse-controls')) return;
         if (selectedGroupKeys.has(key)) {
           selectedGroupKeys.delete(key);
           tabs.forEach(t => selectedIds.delete(t.id));
@@ -294,10 +421,119 @@ function renderTable(processed) {
         render();
       });
 
+      headerTr.querySelectorAll('.btn-collapse').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const winKey = btn.dataset.win;
+          const targetMode = btn.dataset.mode;
+          windowCollapseStates[winKey] = targetMode;
+          render();
+        });
+      });
+
       tbody.appendChild(headerTr);
-      tabs.forEach(tab => renderRow(tbody, tab));
+
+      if (mode === 'full') {
+        tabs.forEach(tab => renderRow(tbody, tab));
+      } else if (mode === 'domain') {
+        const domainGroups = {};
+        tabs.forEach(t => {
+          let cleanDomain = 'Other';
+          try {
+            const url = new URL(t.url);
+            cleanDomain = url.hostname.replace(/^www\d*\./, '').replace(/^m\./, '');
+          } catch(err) {
+            cleanDomain = t.url || 'Other';
+          }
+          if (!domainGroups[cleanDomain]) domainGroups[cleanDomain] = [];
+          domainGroups[cleanDomain].push(t);
+        });
+        
+        for (const [dom, subTabs] of Object.entries(domainGroups)) {
+          renderRollupRow(tbody, key, dom, subTabs, 'Domain');
+        }
+      } else if (mode === 'url') {
+        const urlGroups = {};
+        tabs.forEach(t => {
+          const urlKey = t.url;
+          if (!urlGroups[urlKey]) urlGroups[urlKey] = [];
+          urlGroups[urlKey].push(t);
+        });
+        
+        for (const [url, subTabs] of Object.entries(urlGroups)) {
+          if (subTabs.length > 1) {
+            renderRollupRow(tbody, key, url, subTabs, 'URL');
+          } else {
+            renderRow(tbody, subTabs[0]);
+          }
+        }
+      }
     }
   }
+}
+
+function renderRollupRow(tbody, groupKey, label, tabList, type) {
+  const tr = document.createElement('tr');
+  tr.className = 'rollup-row';
+  
+  const totalMemory = tabList.reduce((sum, t) => sum + (t.memory || 0), 0);
+  const maxAge = Math.max(...tabList.map(t => t.ageMins || 0));
+  const maxImportance = Math.max(...tabList.map(t => t.meta.importancia || 0));
+  const firstTab = tabList[0] || {};
+  const faviconUrl = `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(firstTab.url)}&size=32`;
+  
+  const selectedCount = tabList.filter(t => selectedIds.has(t.id)).length;
+  const allSelected = selectedCount === tabList.length;
+  const partiallySelected = selectedCount > 0 && selectedCount < tabList.length;
+  
+  const isRowActive = tabList.some(t => t.id === activeTabId);
+  if (isRowActive) tr.classList.add('row-active');
+  if (allSelected) tr.classList.add('row-selected');
+  
+  tr.innerHTML = `
+    <td>
+      <label class="rollup-checkbox-label">
+        <input type="checkbox" class="rollup-select" ${allSelected ? 'checked' : ''}>
+        <span class="group-badge">${tabList.length}</span>
+      </label>
+    </td>
+    <td><button class="goto-btn">↗️</button></td>
+    <td><img src="${faviconUrl}" width="16"></td>
+    <td class="truncate" style="font-weight: bold; color: #1e293b;">${label}</td>
+    <td class="truncate" style="color: #64748b; font-size: 11px;">(${tabList.length} tabs collapsed by ${type})</td>
+    <td>${firstTab.windowIndex}</td>
+    <td>${totalMemory}MB</td>
+    <td>${maxAge}m</td>
+    <td></td>
+    <td>
+      <div class="star-rating">
+        ${[1,2,3,4,5].map(i => `<span class="star ${i <= maxImportance ? 'active' : ''}">★</span>`).join('')}
+      </div>
+    </td>
+  `;
+  
+  const checkbox = tr.querySelector('.rollup-select');
+  if (partiallySelected) checkbox.indeterminate = true;
+  
+  checkbox.addEventListener('change', (e) => {
+    e.stopPropagation();
+    if (e.target.checked) {
+      tabList.forEach(t => selectedIds.add(t.id));
+    } else {
+      tabList.forEach(t => selectedIds.delete(t.id));
+    }
+    render();
+  });
+  
+  tr.querySelector('.goto-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (firstTab.id) {
+      chrome.tabs.update(firstTab.id, { active: true }); 
+      chrome.windows.update(firstTab.windowId, { focused: true });
+    }
+  });
+  
+  tbody.appendChild(tr);
 }
 
 function renderRow(tbody, tab) {

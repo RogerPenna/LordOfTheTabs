@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lord of the Tabs - Help & Documentation</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #eff6ff;
+      --bg: #f8fafc;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      
+      --success: #10b981;
+      --success-light: #d1fae5;
+      --warning: #fbbf24;
+      --danger: #ef4444;
+      --danger-light: #fee2e2;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar Layout */
+    .sidebar {
+      width: 280px;
+      background: white;
+      border-right: 1px solid var(--border);
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand img {
+      height: 36px;
+      width: auto;
+    }
+
+    .brand h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .nav-menu {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .nav-item a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .nav-item a:hover {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .nav-item.active a {
+      background: var(--primary);
+      color: white;
+    }
+
+    /* Main Content */
+    .main-content {
+      margin-left: 280px;
+      flex-grow: 1;
+      padding: 48px 64px;
+      max-width: 1000px;
+    }
+
+    section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 24px 0 12px 0;
+      color: #1e293b;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      font-size: 15px;
+    }
+
+    ul, ol {
+      margin-left: 24px;
+      margin-bottom: 24px;
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    /* Cards */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 24px 0;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .card h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card p {
+      margin-bottom: 0;
+      font-size: 14px;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 4px;
+      margin-right: 4px;
+    }
+
+    .badge-primary { background: var(--primary-light); color: var(--primary); }
+    .badge-success { background: var(--success-light); color: var(--success); }
+    .badge-danger { background: var(--danger-light); color: var(--danger); }
+    .badge-warning { background: #fef3c7; color: #d97706; }
+
+    /* Shortcuts and Code */
+    kbd {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+      color: #334155;
+      display: inline-block;
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.4;
+      padding: 2px 6px;
+      white-space: nowrap;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border: 1px solid var(--border);
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    td {
+      font-size: 14px;
+    }
+
+    /* Alert callouts */
+    .callout {
+      background: #f0f9ff;
+      border-left: 4px solid var(--primary);
+      padding: 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 24px 0;
+    }
+
+    .callout.warning {
+      background: #fffbeb;
+      border-left-color: var(--warning);
+    }
+
+    .callout.danger {
+      background: #fef2f2;
+      border-left-color: var(--danger);
+    }
+
+    .callout-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #0f172a;
+    }
+
+    .callout p {
+      margin-bottom: 0;
+      font-size: 14px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        position: static;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 16px;
+      }
+      .main-content {
+        margin-left: 0;
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="logo_transparent.png" alt="Lord of the Tabs Logo">
+      <h1>Lord of the Tabs</h1>
+    </div>
+    <ul class="nav-menu">
+      <li class="nav-item active"><a href="#introduction">📖 Introduction</a></li>
+      <li class="nav-item"><a href="#popup">🖱️ Extension Popup</a></li>
+      <li class="nav-item"><a href="#dashboard">🖥️ Dashboard Pro</a></li>
+      <li class="nav-item"><a href="#shortcuts">⌨️ Shortcuts & Tips</a></li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+    
+    <!-- Introduction Section -->
+    <section id="introduction">
+      <h2>📖 General Introduction</h2>
+      <p>
+        <strong>Lord of the Tabs</strong> is a high-performance, visual tab manager browser extension designed to help you regain control of your browsing session. If you regularly work with dozens of open tabs, suffer from browser slowdowns (high RAM usage), or struggle to find specific pages, Lord of the Tabs is your ultimate tool.
+      </p>
+      <p>
+        At its core, the extension tracks tab usage, records window groupings, maintains a detailed history of your tabs using high-performance local storage (IndexedDB), and offers powerful tools for batch operations. It operates in two main modes:
+      </p>
+      
+      <div class="card-grid">
+        <div class="card">
+          <h4>🖱️ The Popup</h4>
+          <p>A quick-access panel launched directly from the extension icon. Perfect for rapid searching, filtering by importance rating, switching tabs, muting noise, and configuring extension layout settings.</p>
+        </div>
+        <div class="card">
+          <h4>🖥️ The Dashboard Pro</h4>
+          <p>A full-screen command center overrides your New Tab page. Excellent for advanced analytics, tab sorting, bulk actions, workspace packaging, viewing automatically archived tabs in the Vault, and executing cloud backups.</p>
+        </div>
+      </div>
+      
+      <div class="callout">
+        <div class="callout-title">💡 Did you know?</div>
+        <p>Lord of the Tabs automatically cleans up unused tab metadata older than 6 months and backs up your session structure locally to keep the extension running fast and lightweight.</p>
+      </div>
+    </section>
+
+    <!-- The Popup Section -->
+    <section id="popup">
+      <h2>🖱️ The Extension Popup</h2>
+      <p>
+        Clicking the extension icon opens the popup panel. It displays a waterfall canvas organizing all your active Chrome windows and their nested tabs.
+      </p>
+
+      <h3>1. Canvas & Visual Indicators</h3>
+      <ul>
+        <li><span class="badge badge-success">Active Window</span>: Marked by a bright green border. The active tab in the active window has a green outline.</li>
+        <li><span class="badge badge-primary">Selected Window</span>: Clicking a window header highlights it with a blue border, preparing all its tabs for bulk actions.</li>
+        <li><strong>Views</strong>: Toggle between <strong>Grid View</strong> (compact grid of favicons showing ratings/audio playing status) and <strong>List View</strong> (expanded list showing full titles and ratings) using the <code>≣</code> toggle button.</li>
+      </ul>
+
+      <h3>2. Omnibox Controls</h3>
+      <p>The top toolbar houses essential navigation and search elements:</p>
+      <ul>
+        <li>⚓ <strong>Pull URL Button</strong>: Grabs the URL of your currently active tab. Left-clicking pulls the domain name (e.g., <code>google.com</code>) into the search bar, while right-clicking pulls the full URL path.</li>
+        <li>🔍 <strong>Search & Exact Toggle</strong>: Instantly filters tabs by title or URL. Check <strong>Exact</strong> to only show exact URL matches.</li>
+        <li>⭐ <strong>Star Filter</strong>: Restricts the canvas to tabs with a minimum rating (e.g. 3+ ★).</li>
+        <li>🔇 <strong>Mute All</strong>: Instantly mutes audio output across all audible tabs.</li>
+        <li>⚙️ <strong>Settings Toggle</strong>: Swings open the slide-out Settings Pane.</li>
+        <li>↗️ <strong>Open Dashboard</strong>: Opens the full-screen dashboard in a new tab.</li>
+      </ul>
+
+      <h3>3. Footer Operations (Bulk Actions)</h3>
+      <p>To execute actions on multiple tabs, hold <kbd>Ctrl</kbd> (or <kbd>Cmd</kbd> on macOS) and click on the tab tiles to select them, then click a footer action:</p>
+      <ul>
+        <li><strong>Move</strong>: Prompts you to select a destination window to group all selected tabs together.</li>
+        <li><span class="badge badge-warning">Discard</span>: Hibernates selected tabs to free up RAM. They remain visible on your tab bar, but their processes are put to sleep, reloading only when you click on them.</li>
+        <li><span class="badge badge-danger">Close</span>: Permanently removes the selected tabs from your browser session.</li>
+        <li><strong>Clear History</strong>: Clears metadata history and custom names associated with the selected tabs.</li>
+      </ul>
+
+      <h3>4. Settings Pane Configurations</h3>
+      <p>Open settings using the <code>⚙️</code> gear icon to customize your workspace:</p>
+      <ul>
+        <li><strong>Icon Size / Density</strong>: Choose Normal, Compact, or Tiny grid layouts.</li>
+        <li><strong>Narrow Mode</strong>: Forces a strict 3-column layout per window pane.</li>
+        <li><strong>Primary Click Action</strong>: Switch between switching to the tab immediately or entering <em>Manager Mode</em> (selecting the tab).</li>
+        <li><strong>Ghost Hover Filtering</strong>: Enabling this dims or hides other tabs when you hover over a tab, focusing only on tabs matching the same URL, Domain, or Subdomain.</li>
+        <li><strong>Auto-Fit Layout</strong>: Dynamically recalculates the optimal icon size and columns depending on the width of your screen.</li>
+        <li><strong>Open Dashboard on Click</strong>: Bypasses the popup entirely, opening the Dashboard immediately when clicking the extension icon.</li>
+      </ul>
+    </section>
+
+    <!-- The Dashboard Section -->
+    <section id="dashboard">
+      <h2>🖥️ The Dashboard Pro</h2>
+      <p>
+        The Dashboard Pro is a tab management dashboard. It can be set to load automatically when opening a New Tab page or opened manually via the popup.
+      </p>
+
+      <h3>1. View Navigation</h3>
+      <p>Navigate between four main sections at the top of the dashboard:</p>
+      <div class="card-grid">
+        <div class="card">
+          <h4>📋 Table View</h4>
+          <p>A tabular breakdown of all open tabs. You can sort by columns, filter dynamically, select items, and edit star ratings inline.</p>
+        </div>
+        <div class="card">
+          <h4>📊 Charts View</h4>
+          <p>Provides visual representations of your tab distribution. View tabs grouped by domain, RAM/memory consumption per window, and a domain mixed breakdown.</p>
+        </div>
+        <div class="card">
+          <h4>🗄️ Vault View</h4>
+          <p>Displays archived tabs. Lord of the Tabs automatically archives inactive tabs (not accessed for 48 hours and rated under 4 stars) into the Vault to keep your browser organized.</p>
+        </div>
+        <div class="card">
+          <h4>📂 Saved Workspaces</h4>
+          <p>Lists your packaged workspaces. You can package all selected tabs into a named workspace and restore the bundle later with a single click.</p>
+        </div>
+      </div>
+
+      <h3>2. Table Grouping Modes</h3>
+      <p>Use the <strong>Group By</strong> dropdown in the actions header to structure your table layout:</p>
+      <ul>
+        <li><strong>None</strong>: A flat list of all open tabs.</li>
+        <li><strong>Window</strong>: Groups tabs by the window they are currently open in.</li>
+        <li><strong>Domain</strong>: Groups tabs by hostname (e.g. all <code>github.com</code> tabs).</li>
+        <li><strong>Clones (URL)</strong>: Isolates duplicated tabs with identical URLs.</li>
+        <li><strong>Importance</strong>: Groups tabs according to their star rating (0 to 5 Stars).</li>
+      </ul>
+
+      <h3>3. Advanced Actions</h3>
+      <ul>
+        <li>📦 <strong>Bundle Workspace</strong>: Packages your selected tabs into a workspace, saving it to IndexedDB, and preparing it for restoration in the Workspaces tab.</li>
+        <li><strong>Merge Duplicates</strong>: Scans and merges duplicate tabs, keeping the most recently accessed one active and closing redundant clones.</li>
+        <li><strong>Export CSV</strong>: Exports your current filtered list of tabs as a spreadsheet-compatible CSV file.</li>
+        <li>☁️ <strong>Backup to Sheets</strong>: Integrates with Google Sheets using Google OAuth2 to upload your tab session structure (Title, URL, Date Opened, Last Access, Importance) into a new spreadsheet in your Google Drive.</li>
+      </ul>
+    </section>
+
+    <!-- Shortcuts and Tips Section -->
+    <section id="shortcuts">
+      <h2>⌨️ Shortcuts & Pro Tips</h2>
+      <p>
+        Master Lord of the Tabs with these interactive shortcuts and hidden productivity features:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Shortcut / Action</th>
+            <th>Location</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><kbd>Alt</kbd> + <kbd>1</kbd> - <kbd>5</kbd></td>
+            <td>Popup</td>
+            <td>Rate the importance of a focused tab. Pressing the same number again clears the rating.</td>
+          </tr>
+          <tr>
+            <td><kbd>Ctrl</kbd> + <kbd>Click</kbd> (or <kbd>Cmd</kbd> + <kbd>Click</kbd>)</td>
+            <td>Popup & Dashboard</td>
+            <td>Selects individual tabs for batch actions (move, discard, close).</td>
+          </tr>
+          <tr>
+            <td><strong>Window Header Click</strong></td>
+            <td>Popup & Dashboard</td>
+            <td>Selects or deselects all tabs within that window group simultaneously.</td>
+          </tr>
+          <tr>
+            <td><strong>Right-Click "Pull URL" ⚓</strong></td>
+            <td>Popup</td>
+            <td>Pulls the full URL of the active tab. A standard left-click pulls only the domain name.</td>
+          </tr>
+          <tr>
+            <td><strong>Mouse Hover tooltip</strong></td>
+            <td>Popup</td>
+            <td>Displays complete webpage titles, full URLs, active star ratings, and lineage parent reference.</td>
+          </tr>
+          <tr>
+            <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Y</kbd> (or <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>Y</kbd>)</td>
+            <td>Global / Chrome</td>
+            <td><strong>Panic Mode:</strong> Instantly closes all open tabs matching adult/XXX domains, minimizes the original window, and opens a clean new window.</td>
+          </tr>
+          <tr>
+            <td><strong>Right-Click "Close" or "Close Selected"</strong></td>
+            <td>Popup & Dashboard</td>
+            <td><strong>Panic Trigger:</strong> Triggers the Panic Mode immediately.</td>
+          </tr>
+          <tr>
+            <td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>U</kbd> (or <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>U</kbd>)</td>
+            <td>Global / Chrome</td>
+            <td><strong>Blacklist Active Domain:</strong> Adds the current active tab's domain to the Panic Mode domains list, closes the tab immediately, and shows a system notification.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout warning">
+        <div class="callout-title">⚠️ Tab Lineage (Parent-Child tracking)</div>
+        <p>Tabs opened from links in existing tabs automatically record their parent tab's title and URL. Hovering over a child tab in the Popup reveals this connection in the tooltip, helping you trace your research path.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Smooth scrolling on sidebar clicks
+    document.querySelectorAll('.nav-menu a').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href');
+        const targetSection = document.querySelector(targetId);
+        if (targetSection) {
+          targetSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+
+    // Update active nav item based on scroll position
+    window.addEventListener('scroll', () => {
+      const sections = document.querySelectorAll('section');
+      const navItems = document.querySelectorAll('.nav-item');
+      let currentSectionId = '';
+
+      sections.forEach(section => {
+        const top = section.offsetTop;
+        const height = section.offsetHeight;
+        if (window.scrollY >= top - 150) {
+          currentSectionId = section.getAttribute('id');
+        }
+      });
+
+      navItems.forEach(item => {
+        item.classList.remove('active');
+        const linkHref = item.querySelector('a').getAttribute('href');
+        if (linkHref === `#${currentSectionId}`) {
+          item.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

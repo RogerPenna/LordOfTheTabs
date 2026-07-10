@@ -13,7 +13,8 @@
     "history",
     "favicon",
     "alarms",
-    "webNavigation"
+    "webNavigation",
+    "notifications"
   ],
   "host_permissions": [
     "https://gemini.google.com/*"
@@ -56,6 +57,13 @@
         "mac": "Command+Shift+Y"
       },
       "description": "Trigger Instant Panic Close"
+    },
+    "add-to-unsafe": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "mac": "Command+Shift+U"
+      },
+      "description": "Add current domain to unsafe list and close tab"
     }
   }
 }

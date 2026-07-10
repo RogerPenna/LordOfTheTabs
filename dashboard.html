@@ -18,32 +18,39 @@
       <button id="btn-view-vault" class="nav-btn">🗄️ Vault</button>
       <button id="btn-view-workspaces" class="nav-btn">📂 Saved Workspaces</button>
     </div>
-    <div class="actions">
-      <div class="bulk-actions" style="margin-right: auto; display: flex; gap: 8px;">
-        <button id="btn-close-selected" class="danger">Close <span class="info-icon" data-tip="Permanently remove tabs from your session.">?</span></button>
-        <button id="btn-discard-selected" class="secondary">Discard <span class="info-icon" data-tip="Free up RAM by hibernating tabs. They stay visible and reload when clicked.">?</span></button>
-        <button id="btn-move-selected" class="secondary">Move to Window</button>
-        <button id="btn-bundle-selected" class="primary">📦 Bundle Workspace</button>
-        <button id="btn-merge-duplicates" class="primary">Merge Duplicates</button>
-        <button id="btn-delete-history-selected" class="danger">Clear History</button>
-      </div>
-      <label style="font-size: 13px; display: flex; align-items: center; gap: 6px; margin-right: 12px; cursor: pointer;">
-        Group By: 
-        <select id="group-by-select" style="font-size: 12px; padding: 4px; border-radius: 4px;">
-          <option value="none">None</option>
-          <option value="window" selected>Window</option>
-          <option value="domain">Domain</option>
-          <option value="url">Clones (URL)</option>
-          <option value="importance">Importance</option>
-        </select>
-      </label>
+    <div class="global-actions">
       <button id="btn-refresh" class="secondary">↻ Refresh</button>
       <button id="btn-export-csv" class="secondary">Export CSV</button>
       <button id="btn-backup" class="primary">Backup</button>
+      <button id="btn-help" class="secondary" title="Help & Documentation">❓ Help</button>
     </div>
   </div>
 
   <div id="table-view" class="view-content">
+    <div class="toolbar" id="table-toolbar">
+      <div class="toolbar-left">
+        <label class="toolbar-label">
+          Group By: 
+          <select id="group-by-select">
+            <option value="none">None</option>
+            <option value="window" selected>Window</option>
+            <option value="domain">Domain</option>
+            <option value="url">Clones (URL)</option>
+            <option value="importance">Importance</option>
+          </select>
+        </label>
+      </div>
+      <div class="toolbar-right">
+        <div class="bulk-actions">
+          <button id="btn-close-selected" class="btn-bulk danger" disabled>Close <span class="info-icon" data-tip="Permanently remove tabs from your session.">?</span></button>
+          <button id="btn-discard-selected" class="btn-bulk secondary" disabled>Discard <span class="info-icon" data-tip="Free up RAM by hibernating tabs. They stay visible and reload when clicked.">?</span></button>
+          <button id="btn-move-selected" class="btn-bulk secondary" disabled>Move to Window</button>
+          <button id="btn-bundle-selected" class="btn-bulk primary" disabled>📦 Bundle Workspace</button>
+          <button id="btn-merge-duplicates" class="btn-bulk primary">Merge Duplicates</button>
+          <button id="btn-delete-history-selected" class="btn-bulk danger" disabled>Clear History</button>
+        </div>
+      </div>
+    </div>
     <div class="table-container">
       <table class="dashboard-table">
         <thead>
@@ -51,33 +58,66 @@
             <th style="width: 30px;"><input type="checkbox" id="select-all"></th>
             <th style="width: 30px;">Go</th>
             <th style="width: 40px;">Icon</th>
-            <th data-sort="title" class="sortable">Title <span class="sort-icon">↕</span></th>
-            <th data-sort="url" class="sortable">URL <span class="sort-icon">↕</span></th>
-            <th data-sort="windowIndex" class="sortable">Win <span class="sort-icon">↕</span></th>
-            <th data-sort="memory" class="sortable">Memory <span class="sort-icon">↕</span></th>
-            <th data-sort="age" class="sortable">Age <span class="sort-icon">↕</span></th>
-            <th data-sort="lastAccess" class="sortable">Last Access <span class="sort-icon">↕</span></th>
-            <th data-sort="importance" class="sortable">Importance <span class="sort-icon">↕</span></th>
-          </tr>
-          <tr class="filter-row">
-            <th></th>
-            <th></th>
-            <th></th>
-            <th><input type="text" placeholder="Filter title..." class="col-filter" data-col="title"></th>
-            <th><input type="text" placeholder="Filter URL..." class="col-filter" data-col="url"> <label style="font-size: 10px; cursor: pointer;"><input type="checkbox" id="exact-url-toggle"> Exact</label></th>
-            <th></th>
-            <th></th>
-            <th><input type="number" placeholder="Min age..." class="col-filter" data-col="age"></th>
-            <th></th>
-            <th>
-              <select class="col-filter" data-col="importance">
-                <option value="0">All Stars</option>
-                <option value="1">1+ ★</option>
-                <option value="2">2+ ★</option>
-                <option value="3">3+ ★</option>
-                <option value="4">4+ ★</option>
-                <option value="5">5 ★</option>
-              </select>
+            
+            <th style="width: 25%;">
+              <div class="th-content">
+                <span data-sort="title" class="sortable sort-text">Title <span class="sort-icon">↕</span></span>
+                <div class="filter-wrapper">
+                  <input type="text" placeholder="Filter Title..." class="col-filter" data-col="title">
+                  <button class="btn-clear-filter" data-col="title" title="Clear filter">×</button>
+                </div>
+              </div>
+            </th>
+            
+            <th style="width: 35%;">
+              <div class="th-content">
+                <span data-sort="url" class="sortable sort-text">URL <span class="sort-icon">↕</span></span>
+                
+                <div style="position: relative; display: inline-block;">
+                  <button id="btn-pull-url-header" class="btn-pull-header" disabled title="Pull URL of selected tab">⚓</button>
+                  <div id="pull-dropdown-menu" class="pull-dropdown-menu">
+                    <button class="pull-menu-item" id="btn-pull-domain">Pull Domain Only</button>
+                    <button class="pull-menu-item" id="btn-pull-full-url">Pull Full URL</button>
+                  </div>
+                </div>
+
+                <div class="filter-wrapper">
+                  <input type="text" placeholder="Filter URL..." class="col-filter" data-col="url">
+                  <button class="btn-clear-filter" data-col="url" title="Clear filter">×</button>
+                </div>
+                <label style="font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 3px; white-space: nowrap; font-weight: 500;">
+                  <input type="checkbox" id="exact-url-toggle"> Exact
+                </label>
+              </div>
+            </th>
+            
+            <th data-sort="windowIndex" class="sortable" style="width: 50px;">Win <span class="sort-icon">↕</span></th>
+            <th data-sort="memory" class="sortable" style="width: 70px;">Memory <span class="sort-icon">↕</span></th>
+            
+            <th style="width: 80px;">
+              <div class="th-content">
+                <span data-sort="age" class="sortable sort-text">Age <span class="sort-icon">↕</span></span>
+                <div class="filter-wrapper" style="width: 55px;">
+                  <input type="number" placeholder="Min..." class="col-filter" data-col="age">
+                  <button class="btn-clear-filter" data-col="age" title="Clear filter" style="right: 2px;">×</button>
+                </div>
+              </div>
+            </th>
+            
+            <th data-sort="lastAccess" class="sortable" style="width: 140px;">Last Access <span class="sort-icon">↕</span></th>
+            
+            <th style="width: 110px;">
+              <div class="th-content">
+                <span data-sort="importance" class="sortable sort-text">Importance <span class="sort-icon">↕</span></span>
+                <select class="col-filter" data-col="importance" style="width: 60px;">
+                  <option value="0">All</option>
+                  <option value="1">1+ ★</option>
+                  <option value="2">2+ ★</option>
+                  <option value="3">3+ ★</option>
+                  <option value="4">4+ ★</option>
+                  <option value="5">5 ★</option>
+                </select>
+              </div>
             </th>
           </tr>
         </thead>

@@ -16,10 +16,19 @@ let settings = {
   setDashboardAsNewTab: true, // Default to true since manifest forces it
   primaryAction: 'switch',
   ghostHover: false,
+  ghostScope: 'domain',
+  startupFocus: true,
+  openDashboardInitial: false,
   autoFit: false
 };
 
 const channel = new BroadcastChannel('tab_sync');
+
+const DEFAULT_ADULT_DOMAINS = [
+  'pornhub.com', 'xvideos.com', 'xnxx.com', 'xhamster.com', 'youporn.com', 
+  'redtube.com', 'onlyfans.com', 'chaturbate.com', 'bongacams.com', 
+  'livejasmin.com', 'stripchat.com', 'cam4.com', 'xhamster live'
+];
 
 window.addEventListener('unload', () => {
   if (channel) channel.close();
@@ -27,15 +36,24 @@ window.addEventListener('unload', () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings();
+  if (settings.openDashboardInitial) {
+    chrome.tabs.create({ url: 'dashboard.html' });
+    window.close();
+    return;
+  }
   await refreshState();
   render();
   setupEventListeners();
+  if (settings.startupFocus !== false) {
+    document.getElementById('search')?.focus();
+  }
 });
 
 async function loadSettings() {
-  const data = await chrome.storage.local.get(['popupSettings', 'currentView']);
+  const data = await chrome.storage.local.get(['popupSettings', 'currentView', 'panicDomains']);
   if (data.popupSettings) settings = { ...settings, ...data.popupSettings };
   if (data.currentView) currentView = data.currentView;
+  if (data.panicDomains) settings.panicDomains = data.panicDomains;
   applyLayoutSettings();
 }
 
@@ -72,14 +90,59 @@ function applyLayoutSettings() {
 
   const exactCheck = document.getElementById('exact-toggle');
   if (exactCheck) exactCheck.checked = settings.exactSearch;
+
+  const primaryClickSelect = document.getElementById('primary_click_action');
+  if (primaryClickSelect) primaryClickSelect.value = settings.primaryAction || 'switch';
+
+  const ghostFilterToggle = document.getElementById('ghost_filter_enabled');
+  if (ghostFilterToggle) ghostFilterToggle.checked = !!settings.ghostHover;
+
+  const ghostScopeSelect = document.getElementById('ghost_filter_scope');
+  if (ghostScopeSelect) ghostScopeSelect.value = settings.ghostScope || 'domain';
+
+  const startupFocusToggle = document.getElementById('startup_focus');
+  if (startupFocusToggle) startupFocusToggle.checked = settings.startupFocus !== false;
+
+  const openDashboardToggle = document.getElementById('open_dashboard_initial');
+  if (openDashboardToggle) openDashboardToggle.checked = !!settings.openDashboardInitial;
+
+  const dashboardAsNewtabToggle = document.getElementById('dashboard_as_newtab');
+  if (dashboardAsNewtabToggle) dashboardAsNewtabToggle.checked = settings.setDashboardAsNewTab !== false;
+
+  const panicDomainsTextarea = document.getElementById('panic-domains');
+  if (panicDomainsTextarea) {
+    const list = settings.panicDomains || DEFAULT_ADULT_DOMAINS;
+    panicDomainsTextarea.value = list.join(', ');
+  }
 }
 
 channel.onmessage = (msg) => {
   if (msg.data.action === 'update_meta') {
-    tabMetas[msg.data.url] = msg.data.meta;
-    render();
+    if (msg.data.url) tabMetas[msg.data.url] = msg.data.meta;
+    loadSettings().then(render);
   }
 };
+
+function matchGhost(url1, url2, scope) {
+  if (!url1 || !url2) return false;
+  try {
+    const u1 = new URL(url1);
+    const u2 = new URL(url2);
+    if (scope === 'url') {
+      return u1.href === u2.href;
+    }
+    const cleanHost = (host) => host.replace(/^www\d*\./, '').replace(/^m\./, '');
+    const host1 = cleanHost(u1.hostname);
+    const host2 = cleanHost(u2.hostname);
+    if (scope === 'subdomain') {
+      return host1 === host2;
+    }
+    // Default is 'domain' (match whole hostname)
+    return u1.hostname === u2.hostname;
+  } catch (e) {
+    return url1 === url2;
+  }
+}
 
 async function refreshState() {
   const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -150,6 +213,7 @@ function render(skipAutoFit = false) {
 
       const el = document.createElement('div');
       el.className = `tab-element ${currentView === 'list' ? 'list-item' : 'grid-tile'}`;
+      el.dataset.url = tab.url;
       if (selectedIds.has(tab.id)) el.classList.add('selected');
       if (tab.id === activeTabId) el.classList.add('active-tab');
       
@@ -170,21 +234,53 @@ function render(skipAutoFit = false) {
         const tooltip = document.getElementById('tooltip');
         tooltip.innerHTML = `<strong>${displayTitle}</strong><br><small>${tab.url}</small><br><span style="color:#fbbf24;">${'★'.repeat(meta.importancia || 0)}</span> <small>(Alt+1-5 to rate)</small>`;
         tooltip.style.display = 'block';
+
+        if (settings.ghostHover) {
+          const scope = settings.ghostScope || 'domain';
+          const currentUrl = tab.url;
+          document.querySelectorAll('.tab-element').forEach(otherEl => {
+            const otherUrl = otherEl.dataset.url;
+            if (!matchGhost(currentUrl, otherUrl, scope)) {
+              otherEl.style.opacity = '0.15';
+            } else {
+              otherEl.style.opacity = '1';
+            }
+          });
+        }
       });
       el.addEventListener('mousemove', (e) => {
         const tooltip = document.getElementById('tooltip');
         tooltip.style.left = (e.clientX + 15) + 'px';
         tooltip.style.top = (e.clientY + 15) + 'px';
       });
-      el.addEventListener('mouseleave', () => { document.getElementById('tooltip').style.display = 'none'; });
+      el.addEventListener('mouseleave', () => {
+        document.getElementById('tooltip').style.display = 'none';
+        if (settings.ghostHover) {
+          document.querySelectorAll('.tab-element').forEach(otherEl => {
+            otherEl.style.opacity = '1';
+          });
+        }
+      });
       
       el.addEventListener('click', async (e) => {
         if (e.ctrlKey || e.metaKey) {
           if (selectedIds.has(tab.id)) selectedIds.delete(tab.id); else selectedIds.add(tab.id);
           render(true); // Skip auto-fit on selection
         } else {
-          chrome.tabs.update(tab.id, { active: true });
-          chrome.windows.update(win.id, { focused: true });
+          if (settings.primaryAction === 'filter') {
+            try {
+              const url = new URL(tab.url);
+              const val = url.hostname.replace('www.', '');
+              document.getElementById('search').value = val;
+              render();
+            } catch(err) {
+              document.getElementById('search').value = tab.url;
+              render();
+            }
+          } else {
+            chrome.tabs.update(tab.id, { active: true });
+            chrome.windows.update(win.id, { focused: true });
+          }
         }
       });
 
@@ -306,9 +402,46 @@ function setupEventListeners() {
     render();
   });
 
-  document.getElementById('set-newtab-toggle')?.addEventListener('change', (e) => {
+  document.getElementById('dashboard_as_newtab')?.addEventListener('change', (e) => {
     settings.setDashboardAsNewTab = e.target.checked;
     saveSettings();
+  });
+
+  document.getElementById('primary_click_action')?.addEventListener('change', (e) => {
+    settings.primaryAction = e.target.value;
+    saveSettings();
+  });
+
+  document.getElementById('ghost_filter_enabled')?.addEventListener('change', (e) => {
+    settings.ghostHover = e.target.checked;
+    saveSettings();
+  });
+
+  document.getElementById('ghost_filter_scope')?.addEventListener('change', (e) => {
+    settings.ghostScope = e.target.value;
+    saveSettings();
+  });
+
+  document.getElementById('startup_focus')?.addEventListener('change', (e) => {
+    settings.startupFocus = e.target.checked;
+    saveSettings();
+  });
+
+  document.getElementById('open_dashboard_initial')?.addEventListener('change', (e) => {
+    settings.openDashboardInitial = e.target.checked;
+    saveSettings();
+  });
+
+  document.getElementById('panic-domains')?.addEventListener('input', async (e) => {
+    const rawValue = e.target.value;
+    const array = rawValue.split(',')
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+    settings.panicDomains = array;
+    await chrome.storage.local.set({ panicDomains: array });
+    
+    // Broadcast a change so background or dashboard syncs
+    channel.postMessage({ action: 'update_meta' });
   });
 
   document.getElementById('star-filter').addEventListener('change', render);
@@ -321,6 +454,10 @@ function setupEventListeners() {
 
   document.getElementById('btn-expand').addEventListener('click', () => {
     chrome.tabs.create({ url: 'dashboard.html?manual=1' });
+  });
+
+  document.getElementById('btn-help')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'help.html' });
   });
 
   document.getElementById('settings-toggle').addEventListener('click', () => {
