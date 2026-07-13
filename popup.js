@@ -109,6 +109,11 @@ function applyLayoutSettings() {
   const dashboardAsNewtabToggle = document.getElementById('dashboard_as_newtab');
   if (dashboardAsNewtabToggle) dashboardAsNewtabToggle.checked = settings.setDashboardAsNewTab !== false;
 
+  const autoArchiveDaysInput = document.getElementById('auto-archive-days');
+  if (autoArchiveDaysInput) {
+    autoArchiveDaysInput.value = settings.autoArchiveDays || 3;
+  }
+
   const panicDomainsTextarea = document.getElementById('panic-domains');
   if (panicDomainsTextarea) {
     const list = settings.panicDomains || DEFAULT_ADULT_DOMAINS;
@@ -430,6 +435,13 @@ function setupEventListeners() {
   document.getElementById('open_dashboard_initial')?.addEventListener('change', (e) => {
     settings.openDashboardInitial = e.target.checked;
     saveSettings();
+  });
+
+  document.getElementById('auto-archive-days')?.addEventListener('change', (e) => {
+    const val = parseInt(e.target.value) || 3;
+    settings.autoArchiveDays = val;
+    saveSettings();
+    channel.postMessage({ action: 'update_meta' });
   });
 
   document.getElementById('panic-domains')?.addEventListener('input', async (e) => {

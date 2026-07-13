@@ -197,18 +197,26 @@ async function addCurrentDomainToUnsafe() {
 async function autoArchiveTabs() {
   try {
     const tabs = await chrome.tabs.query({ pinned: false });
-    const fortyEightHours = 48 * 60 * 60 * 1000;
+    const windows = await chrome.windows.getAll();
+    const windowMap = new Map();
+    windows.forEach((win, idx) => windowMap.set(win.id, idx + 1));
+
+    const settingsData = await chrome.storage.local.get('popupSettings');
+    const settings = settingsData.popupSettings || {};
+    const archiveDays = settings.autoArchiveDays || 3;
+    const archiveThresholdMs = archiveDays * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
     for (const tab of tabs) {
-      if (!tab.url || tab.url.startsWith('chrome://')) continue;
+      if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) continue;
       const meta = await getTabMeta(tab.url);
-      if (now - meta.ultimo_acesso > fortyEightHours && meta.importancia < 4) {
+      if (now - meta.ultimo_acesso > archiveThresholdMs && meta.importancia < 4) {
         await archiveTab({
           url: tab.url,
           title: meta.customTitle || tab.title,
           favIconUrl: tab.favIconUrl,
           archivedAt: now,
+          windowIndex: windowMap.get(tab.windowId) || '?',
           originalMeta: meta
         });
         await chrome.tabs.remove(tab.id);

@@ -14,7 +14,8 @@
     "favicon",
     "alarms",
     "webNavigation",
-    "notifications"
+    "notifications",
+    "sessions"
   ],
   "host_permissions": [
     "https://gemini.google.com/*"

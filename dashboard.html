@@ -150,6 +150,21 @@
   </div>
 
   <div id="vault-view" class="view-content" style="display: none;">
+    <div class="toolbar" id="vault-toolbar" style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+      <div class="toolbar-left">
+        <label class="toolbar-label" style="font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; color: #475569;">
+          Group By: 
+          <select id="vault-group-by-select" style="font-size: 12px; padding: 4px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; background: white; color: #334155; cursor: pointer;">
+            <option value="none">None</option>
+            <option value="date" selected>Date Archived</option>
+            <option value="title">Title</option>
+            <option value="domain">Domain</option>
+            <option value="url">URL</option>
+            <option value="window">Original Window</option>
+          </select>
+        </label>
+      </div>
+    </div>
     <div class="table-container">
       <table class="dashboard-table">
         <thead>
@@ -163,6 +178,13 @@
           <!-- Vault items populated by JS -->
         </tbody>
       </table>
+    </div>
+    
+    <div class="vault-section-title" style="margin-top: 32px; margin-bottom: 12px; font-weight: bold; font-size: 16px; color: #1e293b; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px; text-align: left;">
+      🗔 Recently Closed Windows (Chrome Sessions)
+    </div>
+    <div id="recent-windows-list" class="workspaces-grid" style="padding-top: 10px;">
+      <!-- Rendered via JS -->
     </div>
   </div>
 

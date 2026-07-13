@@ -18,10 +18,13 @@ let activeTabId = null;
 let activeWindowId = null;
 let currentView = 'table';
 let settings = {};
+let vaultGroupBy = 'date';
+let lastVaultAccessTime = 0;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const data = await chrome.storage.local.get('popupSettings');
+  const data = await chrome.storage.local.get(['popupSettings', 'lastVaultAccessTime']);
   settings = data.popupSettings || {};
+  lastVaultAccessTime = data.lastVaultAccessTime || 0;
   
   if (settings.setDashboardAsNewTab === false) {
     const url = new URL(window.location.href);
@@ -208,6 +211,11 @@ function setupEventListeners() {
     chrome.tabs.create({ url: 'help.html' });
   });
 
+  document.getElementById('vault-group-by-select')?.addEventListener('change', (e) => {
+    vaultGroupBy = e.target.value;
+    render();
+  });
+
   document.getElementById('btn-bundle-selected')?.addEventListener('click', async () => {
     if (selectedIds.size === 0) return;
     const name = prompt("Enter a name for this workspace:");
@@ -300,6 +308,10 @@ function setupEventListeners() {
 function setupViewNavigation() {
   const switchView = (name) => {
     currentView = name;
+    if (name === 'vault') {
+      lastVaultAccessTime = Date.now();
+      chrome.storage.local.set({ lastVaultAccessTime });
+    }
     ['table', 'charts', 'vault', 'workspaces'].forEach(v => {
       const btn = document.getElementById(`btn-view-${v}`);
       const view = document.getElementById(`${v}-view`);
@@ -372,7 +384,6 @@ function render() {
   const processed = getProcessedData();
   document.getElementById('tab-count').innerText = `${processed.length} / ${allTabs.length} Tabs`;
   
-  // Toggle disabled state on bulk actions depending on selection size
   const hasSelection = selectedIds.size > 0;
   const bulkButtons = [
     'btn-close-selected', 
@@ -386,10 +397,19 @@ function render() {
     const el = document.getElementById(id);
     if (el) el.disabled = !hasSelection;
   });
+
+  const hasNewVaultItems = archivedTabs.some(t => t.archivedAt && t.archivedAt > lastVaultAccessTime);
+  const vaultBtn = document.getElementById('btn-view-vault');
+  if (vaultBtn) {
+    vaultBtn.classList.toggle('has-unread', hasNewVaultItems);
+  }
   
   if (currentView === 'table') renderTable(processed); 
   else if (currentView === 'charts') renderCharts();
-  else if (currentView === 'vault') renderVault();
+  else if (currentView === 'vault') {
+    renderVault();
+    renderRecentWindows();
+  }
   else if (currentView === 'workspaces') renderWorkspaces();
 }
 
@@ -720,7 +740,9 @@ function renderVault() {
   const tbody = document.getElementById('vault-table-body');
   if (!tbody) return;
   tbody.innerHTML = archivedTabs.length ? '' : '<tr><td colspan="3" style="text-align:center; color:#64748b; padding:20px;">Vault is empty</td></tr>';
-  archivedTabs.forEach(tab => {
+  if (archivedTabs.length === 0) return;
+
+  const renderVaultRow = (rowContainer, tab) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${tab.title || 'Untitled'}</td>
@@ -733,8 +755,70 @@ function renderVault() {
       await loadData();
       render();
     });
-    tbody.appendChild(tr);
-  });
+    rowContainer.appendChild(tr);
+  };
+
+  if (vaultGroupBy === 'none') {
+    archivedTabs.forEach(tab => renderVaultRow(tbody, tab));
+  } else {
+    const groups = {};
+    const todayStr = new Date().toDateString();
+    const yesterdayStr = new Date(Date.now() - 86400000).toDateString();
+
+    archivedTabs.forEach(tab => {
+      let key = 'Other';
+      if (vaultGroupBy === 'date') {
+        if (!tab.archivedAt) {
+          key = 'Unknown Date';
+        } else {
+          const d = new Date(tab.archivedAt);
+          const dStr = d.toDateString();
+          if (dStr === todayStr) key = 'Today';
+          else if (dStr === yesterdayStr) key = 'Yesterday';
+          else key = d.toLocaleDateString();
+        }
+      } else if (vaultGroupBy === 'title') {
+        const char = (tab.title || 'Untitled').trim().charAt(0).toUpperCase();
+        key = /[A-Z]/.test(char) ? char : '#';
+      } else if (vaultGroupBy === 'domain') {
+        try {
+          key = new URL(tab.url).hostname.replace(/^www\d*\./, '').replace(/^m\./, '');
+        } catch(e) {
+          key = tab.url || 'Other';
+        }
+      } else if (vaultGroupBy === 'url') {
+        key = tab.url;
+      } else if (vaultGroupBy === 'window') {
+        key = tab.windowIndex ? `Window ${tab.windowIndex}` : 'Unknown Window';
+      }
+      
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(tab);
+    });
+
+    let sortedKeys = Object.keys(groups);
+    if (vaultGroupBy === 'date') {
+      sortedKeys.sort((a, b) => {
+        if (a === 'Today') return -1;
+        if (b === 'Today') return 1;
+        if (a === 'Yesterday') return -1;
+        if (b === 'Yesterday') return 1;
+        if (a === 'Unknown Date') return 1;
+        if (b === 'Unknown Date') return -1;
+        return new Date(b) - new Date(a);
+      });
+    } else {
+      sortedKeys.sort((a, b) => a.localeCompare(b));
+    }
+
+    for (const key of sortedKeys) {
+      const headerTr = document.createElement('tr');
+      headerTr.className = 'group-header';
+      headerTr.innerHTML = `<td colspan="3" style="font-weight: bold; padding: 6px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #475569; text-align: left;">${key} (${groups[key].length})</td>`;
+      tbody.appendChild(headerTr);
+      groups[key].forEach(tab => renderVaultRow(tbody, tab));
+    }
+  }
 }
 
 function renderWorkspaces() {
@@ -782,6 +866,55 @@ function renderWorkspaces() {
     card.querySelector('.btn-delete-ws').addEventListener('click', async () => {
       if (confirm(`Delete workspace "${ws.name}"?`)) {
         await deleteWorkspace(ws.id);
+        await loadData();
+        render();
+      }
+    });
+    
+    container.appendChild(card);
+  });
+}
+
+function renderRecentWindows() {
+  const container = document.getElementById('recent-windows-list');
+  if (!container) return;
+  
+  container.innerHTML = recentWindows.length ? '' : '<div style="padding:20px; text-align:center; color:#64748b; width:100%;">No recently closed windows found in Chrome sessions.</div>';
+  
+  recentWindows.forEach(session => {
+    const win = session.window;
+    const card = document.createElement('div');
+    card.className = 'workspace-card';
+    
+    const faviconsHTML = win.tabs.slice(0, 10).map(t => {
+      const favUrl = `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(t.url)}&size=32`;
+      return `<img src="${favUrl}" class="preview-fav" title="${t.title || t.url}" width="20" height="20">`;
+    }).join('');
+    
+    const dateStr = session.lastModified ? new Date(session.lastModified * 1000).toLocaleString() : 'N/A';
+    
+    card.innerHTML = `
+      <div class="workspace-header">
+        <div class="workspace-title-group">
+          <span class="workspace-name">Closed Window</span>
+          <span class="workspace-date">Closed: ${dateStr}</span>
+        </div>
+      </div>
+      <div class="workspace-stats">
+        <span><b>${win.tabs.length}</b> Tabs</span>
+      </div>
+      <div class="workspace-tabs-preview">
+        ${faviconsHTML}
+        ${win.tabs.length > 10 ? `<span style="font-size:11px; color:#64748b; align-self:center; margin-left:4px;">+${win.tabs.length - 10} more</span>` : ''}
+      </div>
+      <div class="workspace-actions">
+        <button class="primary btn-restore-window" style="padding: 6px 12px; font-size: 12px;">Restore Window</button>
+      </div>
+    `;
+    
+    card.querySelector('.btn-restore-window').addEventListener('click', async () => {
+      if (chrome.sessions && chrome.sessions.restore) {
+        await chrome.sessions.restore(session.sessionId);
         await loadData();
         render();
       }
