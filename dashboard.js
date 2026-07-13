@@ -601,16 +601,64 @@ function renderCharts() {
     const sortedMemory = Object.entries(windowMemory).sort((a,b) => b[1] - a[1]);
     containerMemory.innerHTML = createBarChart(sortedMemory, '#10b981', 'MB');
 
-    containerMixed.innerHTML = `<div style="padding: 20px; text-align: center; width: 100%;">
-      <h4>Top Domains</h4>
-      <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 15px;">
-        ${sortedDomains.map(([domain, count]) => `
-          <div style="background: #f1f5f9; padding: 10px; border-radius: 8px;">
-            <b>${domain}</b>: ${count} Tabs
+    let accumulatedPercent = 0;
+    const gradientSlices = [];
+    const colors = ['#3b82f6', '#10b981', '#fbbf24', '#ef4444', '#8b5cf6', '#ec4899', '#f97316', '#06b6d4', '#14b8a6', '#64748b'];
+
+    sortedDomains.forEach(([domain, count], idx) => {
+      const percent = (count / allTabs.length) * 100;
+      const start = accumulatedPercent;
+      const end = accumulatedPercent + percent;
+      accumulatedPercent = end;
+      const color = colors[idx % colors.length];
+      gradientSlices.push(`${color} ${start}% ${end}%`);
+    });
+
+    if (accumulatedPercent < 100) {
+      gradientSlices.push(`#cbd5e1 ${accumulatedPercent}% 100%`);
+    }
+
+    const conicGradient = `conic-gradient(${gradientSlices.join(', ')})`;
+
+    containerMixed.innerHTML = `
+      <div style="padding: 10px; text-align: center; width: 100%; display: flex; flex-direction: column; align-items: center;">
+        <h4 style="margin: 0 0 10px 0; color: #475569; font-size: 15px;">Top Domains Distribution</h4>
+        
+        <div style="display: flex; align-items: center; justify-content: center; gap: 40px; margin-top: 15px; flex-wrap: wrap; width: 100%;">
+          <!-- The Donut Pie -->
+          <div style="position: relative; width: 150px; height: 150px; border-radius: 50%; background: ${conicGradient}; box-shadow: 0 4px 10px rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <div style="width: 96px; height: 96px; border-radius: 50%; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 2px 5px rgba(0,0,0,0.04);">
+              <span style="font-size: 24px; font-weight: bold; color: #1e293b;">${allTabs.length}</span>
+              <span style="font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Tabs</span>
+            </div>
           </div>
-        `).join('')}
+          
+          <!-- Legend -->
+          <div style="display: flex; flex-direction: column; gap: 6px; text-align: left; min-width: 220px; max-width: 320px;">
+            ${sortedDomains.map(([domain, count], idx) => {
+              const color = colors[idx % colors.length];
+              const pct = ((count / allTabs.length) * 100).toFixed(0);
+              return `
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #334155;">
+                  <div style="width: 12px; height: 12px; border-radius: 3px; background: ${color}; flex-shrink: 0;"></div>
+                  <span style="font-weight: 600; min-width: 30px; text-align: right;">${pct}%</span>
+                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;" title="${domain}">${domain}</span>
+                  <span style="color: #94a3b8; font-size: 10px;">(${count})</span>
+                </div>
+              `;
+            }).join('')}
+            ${accumulatedPercent < 99.9 ? `
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #334155;">
+                <div style="width: 12px; height: 12px; border-radius: 3px; background: #cbd5e1; flex-shrink: 0;"></div>
+                <span style="font-weight: 600; min-width: 30px; text-align: right;">${(100 - accumulatedPercent).toFixed(0)}%</span>
+                <span>Other Domains</span>
+                <span style="color: #94a3b8; font-size: 10px;">(${allTabs.length - sortedDomains.reduce((sum, d) => sum + d[1], 0)})</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
       </div>
-    </div>`;
+    `;
   } catch (err) {
     console.error("Error rendering charts:", err);
     const containerMixed = document.getElementById('chart-mixed');
