@@ -114,6 +114,13 @@ function applyLayoutSettings() {
     autoArchiveDaysInput.value = settings.autoArchiveDays || 3;
   }
 
+  chrome.storage.sync.get('enableAffiliateSpeedDial', (res) => {
+    const toggle = document.getElementById('affiliate_speed_dial_toggle');
+    if (toggle) {
+      toggle.checked = res.enableAffiliateSpeedDial !== false;
+    }
+  });
+
   const panicDomainsTextarea = document.getElementById('panic-domains');
   if (panicDomainsTextarea) {
     const list = settings.panicDomains || DEFAULT_ADULT_DOMAINS;
@@ -442,6 +449,12 @@ function setupEventListeners() {
     settings.autoArchiveDays = val;
     saveSettings();
     channel.postMessage({ action: 'update_meta' });
+  });
+
+  document.getElementById('affiliate_speed_dial_toggle')?.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ enableAffiliateSpeedDial: e.target.checked }, () => {
+      channel.postMessage({ action: 'update_meta' });
+    });
   });
 
   document.getElementById('panic-domains')?.addEventListener('input', async (e) => {

@@ -8,6 +8,13 @@ const channel = new BroadcastChannel('tab_sync');
 let allTabs = [];
 let archivedTabs = [];
 let savedWorkspaces = [];
+let recentWindows = [];
+const AFFILIATE_LINKS = {
+  amazon: 'https://www.amazon.com.br/?tag=lordoftabs-20',
+  mercadolivre: 'https://mercadolivre.com.br/seu-link-de-afiliado',
+  aliexpress: 'https://s.click.aliexpress.com/e/seu-id'
+};
+let enableAffiliateSpeedDial = true;
 let sortConfig = { key: 'importance', direction: 'desc' };
 let filters = { title: '', url: '', age: 0, importance: 0, exactUrl: false };
 let groupBy = 'window'; 
@@ -47,16 +54,25 @@ channel.onmessage = (msg) => {
 };
 
 async function loadData() {
-  const [tabs, windows, archived, workspaces, activeTabs, data] = await Promise.all([
+  const [tabs, windows, archived, workspaces, activeTabs, data, recentSessions, syncData] = await Promise.all([
     chrome.tabs.query({}),
     chrome.windows.getAll(),
     getArchivedTabs(),
     getAllWorkspaces(),
     chrome.tabs.query({ active: true, lastFocusedWindow: true }),
-    chrome.storage.local.get('popupSettings')
+    chrome.storage.local.get('popupSettings'),
+    new Promise((resolve) => {
+      if (chrome.sessions && chrome.sessions.getRecentlyClosed) {
+        chrome.sessions.getRecentlyClosed({ maxResults: 25 }, resolve);
+      } else {
+        resolve([]);
+      }
+    }),
+    chrome.storage.sync.get('enableAffiliateSpeedDial')
   ]);
   
   settings = data.popupSettings || {};
+  enableAffiliateSpeedDial = syncData.enableAffiliateSpeedDial !== false;
   
   const activeTab = activeTabs[0];
   if (activeTab) {
@@ -66,6 +82,7 @@ async function loadData() {
 
   archivedTabs = archived;
   savedWorkspaces = workspaces;
+  recentWindows = (recentSessions || []).filter(s => s.window);
   const windowMap = new Map();
   windows.forEach((win, idx) => windowMap.set(win.id, idx + 1));
 
@@ -214,6 +231,18 @@ function setupEventListeners() {
   document.getElementById('vault-group-by-select')?.addEventListener('change', (e) => {
     vaultGroupBy = e.target.value;
     render();
+  });
+
+  document.getElementById('sd-amazon')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: AFFILIATE_LINKS.amazon });
+  });
+
+  document.getElementById('sd-mercadolivre')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: AFFILIATE_LINKS.mercadolivre });
+  });
+
+  document.getElementById('sd-aliexpress')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: AFFILIATE_LINKS.aliexpress });
   });
 
   document.getElementById('btn-bundle-selected')?.addEventListener('click', async () => {
@@ -402,6 +431,11 @@ function render() {
   const vaultBtn = document.getElementById('btn-view-vault');
   if (vaultBtn) {
     vaultBtn.classList.toggle('has-unread', hasNewVaultItems);
+  }
+
+  const speedDialSection = document.getElementById('speed-dial-section');
+  if (speedDialSection) {
+    speedDialSection.style.display = enableAffiliateSpeedDial ? 'flex' : 'none';
   }
   
   if (currentView === 'table') renderTable(processed); 

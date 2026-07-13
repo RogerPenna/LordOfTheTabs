@@ -706,3 +706,67 @@ path.slice-highlight {
 .row-selected .group-badge {
   background: #2563eb;
 }
+
+/* Speed Dial Section */
+.speed-dial-section {
+  background: white;
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.speed-dial-title {
+  font-weight: bold;
+  font-size: 14px;
+  color: #475569;
+  text-align: left;
+}
+
+.speed-dial-grid {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.speed-dial-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  min-width: 160px;
+}
+
+.speed-dial-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.sd-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+}
+
+.sd-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.speed-dial-disclosure {
+  font-size: 10px;
+  color: #94a3b8;
+  text-align: left;
+}
