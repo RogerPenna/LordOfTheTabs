@@ -814,7 +814,26 @@ function renderVault() {
     for (const key of sortedKeys) {
       const headerTr = document.createElement('tr');
       headerTr.className = 'group-header';
-      headerTr.innerHTML = `<td colspan="3" style="font-weight: bold; padding: 6px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #475569; text-align: left;">${key} (${groups[key].length})</td>`;
+      headerTr.innerHTML = `
+        <td colspan="3" style="font-weight: bold; padding: 6px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #475569;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span>${key} (${groups[key].length})</span>
+            <button class="primary btn-restore-vault-group" style="padding: 3px 8px; font-size: 10px; font-weight: 600; cursor: pointer; border-radius: 4px; border: 1px solid #2563eb;">Restore Group</button>
+          </div>
+        </td>
+      `;
+      headerTr.querySelector('.btn-restore-vault-group').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const tabsToRestore = groups[key];
+        if (confirm(`Restore all ${tabsToRestore.length} tabs in this group?`)) {
+          for (const tab of tabsToRestore) {
+            await chrome.tabs.create({ url: tab.url, active: false });
+            await deleteArchivedTab(tab.url);
+          }
+          await loadData();
+          render();
+        }
+      });
       tbody.appendChild(headerTr);
       groups[key].forEach(tab => renderVaultRow(tbody, tab));
     }
