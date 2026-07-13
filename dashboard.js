@@ -208,6 +208,31 @@ function setupEventListeners() {
     chrome.tabs.create({ url: 'help.html' });
   });
 
+  document.getElementById('btn-bundle-selected')?.addEventListener('click', async () => {
+    if (selectedIds.size === 0) return;
+    const name = prompt("Enter a name for this workspace:");
+    if (!name) return;
+    
+    const selectedTabs = allTabs.filter(t => selectedIds.has(t.id));
+    const workspace = {
+      name: name,
+      tabCount: selectedTabs.length,
+      tabs: selectedTabs.map(t => ({ title: t.title || t.url, url: t.url })),
+      createdAt: Date.now()
+    };
+    
+    await saveWorkspace(workspace);
+    
+    if (confirm(`Workspace "${name}" saved! Do you want to close these ${selectedTabs.length} tabs now?`)) {
+      await chrome.tabs.remove(Array.from(selectedIds));
+      selectedIds.clear();
+      selectedGroupKeys.clear();
+    }
+    
+    await loadData();
+    render();
+  });
+
   document.getElementById('btn-pull-url-header')?.addEventListener('click', (e) => {
     e.stopPropagation();
     document.getElementById('pull-dropdown-menu')?.classList.toggle('show');
@@ -694,10 +719,14 @@ function createBarChart(data, color, unit = 'tabs') {
 function renderVault() {
   const tbody = document.getElementById('vault-table-body');
   if (!tbody) return;
-  tbody.innerHTML = archivedTabs.length ? '' : '<tr><td colspan="5" style="text-align:center;">Vault is empty</td></tr>';
+  tbody.innerHTML = archivedTabs.length ? '' : '<tr><td colspan="3" style="text-align:center; color:#64748b; padding:20px;">Vault is empty</td></tr>';
   archivedTabs.forEach(tab => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${tab.title}</td><td class="truncate">${tab.url}</td><td><button class="btn-restore primary">Restore</button></td>`;
+    tr.innerHTML = `
+      <td>${tab.title || 'Untitled'}</td>
+      <td class="truncate" style="max-width: 400px;"><a href="${tab.url}" target="_blank" style="color: #2563eb; text-decoration: none;">${tab.url}</a></td>
+      <td style="text-align: center;"><button class="btn-restore primary" style="padding: 4px 8px; font-size: 11px;">Restore</button></td>
+    `;
     tr.querySelector('.btn-restore').addEventListener('click', async () => {
       await chrome.tabs.create({ url: tab.url });
       await deleteArchivedTab(tab.url);
@@ -711,14 +740,53 @@ function renderVault() {
 function renderWorkspaces() {
   const container = document.getElementById('workspaces-list');
   if (!container) return;
-  container.innerHTML = savedWorkspaces.length ? '' : '<div style="padding:20px;">No workspaces</div>';
+  container.innerHTML = savedWorkspaces.length ? '' : '<div style="padding:20px; text-align:center; color:#64748b; width:100%;">No workspaces saved yet.</div>';
+  
   savedWorkspaces.forEach(ws => {
     const card = document.createElement('div');
     card.className = 'workspace-card';
-    card.innerHTML = `<b>${ws.name}</b> (${ws.tabCount} tabs) <button class="primary btn-restore-ws">Restore</button>`;
+    
+    const faviconsHTML = ws.tabs.slice(0, 10).map(t => {
+      const favUrl = `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(t.url)}&size=32`;
+      return `<img src="${favUrl}" class="preview-fav" title="${t.title || t.url}" width="20" height="20">`;
+    }).join('');
+    
+    const dateStr = ws.createdAt ? new Date(ws.createdAt).toLocaleString() : 'N/A';
+    
+    card.innerHTML = `
+      <div class="workspace-header">
+        <div class="workspace-title-group">
+          <span class="workspace-name">${ws.name}</span>
+          <span class="workspace-date">Created: ${dateStr}</span>
+        </div>
+      </div>
+      <div class="workspace-stats">
+        <span><b>${ws.tabCount}</b> Tabs Total</span>
+      </div>
+      <div class="workspace-tabs-preview">
+        ${faviconsHTML}
+        ${ws.tabs.length > 10 ? `<span style="font-size:11px; color:#64748b; align-self:center; margin-left:4px;">+${ws.tabs.length - 10} more</span>` : ''}
+      </div>
+      <div class="workspace-actions">
+        <button class="primary btn-restore-ws" style="padding: 6px 12px; font-size: 12px;">Restore Workspace</button>
+        <button class="danger btn-delete-ws" style="padding: 6px 12px; font-size: 12px;">Delete</button>
+      </div>
+    `;
+    
     card.querySelector('.btn-restore-ws').addEventListener('click', async () => {
-      for (const t of ws.tabs) await chrome.tabs.create({ url: t.url, active: false });
+      for (const t of ws.tabs) {
+        await chrome.tabs.create({ url: t.url, active: false });
+      }
     });
+    
+    card.querySelector('.btn-delete-ws').addEventListener('click', async () => {
+      if (confirm(`Delete workspace "${ws.name}"?`)) {
+        await deleteWorkspace(ws.id);
+        await loadData();
+        render();
+      }
+    });
+    
     container.appendChild(card);
   });
 }

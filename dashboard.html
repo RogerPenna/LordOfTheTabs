@@ -150,7 +150,20 @@
   </div>
 
   <div id="vault-view" class="view-content" style="display: none;">
-    <!-- ... existing vault table ... -->
+    <div class="table-container">
+      <table class="dashboard-table">
+        <thead>
+          <tr class="sort-row">
+            <th>Title</th>
+            <th>URL</th>
+            <th style="width: 100px; text-align: center;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="vault-table-body">
+          <!-- Vault items populated by JS -->
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <div id="workspaces-view" class="view-content" style="display: none;">
