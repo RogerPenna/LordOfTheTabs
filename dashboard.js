@@ -579,40 +579,59 @@ function renderRow(tbody, tab) {
 }
 
 function renderCharts() {
-  const containerDomains = document.getElementById('chart-domains');
-  const containerMemory = document.getElementById('chart-memory-window');
-  const containerMixed = document.getElementById('chart-mixed');
-  if (!containerDomains || !containerMemory || !containerMixed) return;
+  try {
+    const containerDomains = document.getElementById('chart-domains');
+    const containerMemory = document.getElementById('chart-memory-window');
+    const containerMixed = document.getElementById('chart-mixed');
+    if (!containerDomains || !containerMemory || !containerMixed) return;
 
-  const domainCounts = {};
-  allTabs.forEach(t => domainCounts[t.domain] = (domainCounts[t.domain] || 0) + 1);
-  const sortedDomains = Object.entries(domainCounts).sort((a,b) => b[1] - a[1]).slice(0, 10);
-  containerDomains.innerHTML = createBarChart(sortedDomains, '#3b82f6');
+    const domainCounts = {};
+    allTabs.forEach(t => {
+      const d = t.domain || 'Other';
+      domainCounts[d] = (domainCounts[d] || 0) + 1;
+    });
+    const sortedDomains = Object.entries(domainCounts).sort((a,b) => b[1] - a[1]).slice(0, 10);
+    containerDomains.innerHTML = createBarChart(sortedDomains, '#3b82f6');
 
-  const windowMemory = {};
-  allTabs.forEach(t => windowMemory[t.windowIndex] = (windowMemory[t.windowIndex] || 0) + t.memory);
-  const sortedMemory = Object.entries(windowMemory).sort((a,b) => b[1] - a[1]);
-  containerMemory.innerHTML = createBarChart(sortedMemory, '#10b981', 'MB');
+    const windowMemory = {};
+    allTabs.forEach(t => {
+      const idx = t.windowIndex || '?';
+      windowMemory[idx] = (windowMemory[idx] || 0) + (t.memory || 0);
+    });
+    const sortedMemory = Object.entries(windowMemory).sort((a,b) => b[1] - a[1]);
+    containerMemory.innerHTML = createBarChart(sortedMemory, '#10b981', 'MB');
 
-  containerMixed.innerHTML = `<div style="padding: 20px; text-align: center;">
-    <h4>Top Domains</h4>
-    <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 15px;">
-      ${sortedDomains.map(([domain, count]) => `
-        <div style="background: #f1f5f9; padding: 10px; border-radius: 8px;">
-          <b>${domain}</b>: ${count} Tabs
+    containerMixed.innerHTML = `<div style="padding: 20px; text-align: center; width: 100%;">
+      <h4>Top Domains</h4>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 15px;">
+        ${sortedDomains.map(([domain, count]) => `
+          <div style="background: #f1f5f9; padding: 10px; border-radius: 8px;">
+            <b>${domain}</b>: ${count} Tabs
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  } catch (err) {
+    console.error("Error rendering charts:", err);
+    const containerMixed = document.getElementById('chart-mixed');
+    if (containerMixed) {
+      containerMixed.innerHTML = `
+        <div style="padding: 20px; color: #ef4444; background: #fee2e2; border-radius: 8px; margin: 10px; text-align: left; width: 100%;">
+          <h4>Failed to render charts:</h4>
+          <pre style="font-size: 11px; white-space: pre-wrap; font-family: monospace;">${err.stack || err.message || err}</pre>
         </div>
-      `).join('')}
-    </div>
-  </div>`;
+      `;
+    }
+  }
 }
 
 function createBarChart(data, color, unit = 'tabs') {
   if (data.length === 0) return '<div style="padding:20px; text-align:center;">No data</div>';
   const max = Math.max(...data.map(d => d[1]));
   return `
-    <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px;">
+    <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px; width: 100%;">
       ${data.map(([label, val]) => `
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
           <div style="width: 100px; text-align: right; font-size: 11px; overflow: hidden; text-overflow: ellipsis;">${label}</div>
           <div style="flex-grow: 1; height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden;">
             <div style="height: 100%; width: ${(val/max)*100}%; background: ${color};"></div>
