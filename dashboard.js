@@ -9,12 +9,35 @@ let allTabs = [];
 let archivedTabs = [];
 let savedWorkspaces = [];
 let recentWindows = [];
-const AFFILIATE_LINKS = {
-  amazon: 'https://www.amazon.com.br/?tag=lordoftabs-20',
-  mercadolivre: 'https://mercadolivre.com.br/seu-link-de-afiliado',
-  aliexpress: 'https://s.click.aliexpress.com/e/seu-id'
+const GLOBAL_AFFILIATE_LINKS = {
+  amazon: {
+    "pt-BR": "https://www.amazon.com.br/?tag=lordoftabsbr-20",
+    "en-US": "https://www.amazon.com/?tag=lordoftabsus-20",
+    "es-ES": "https://www.amazon.es/?tag=lordoftabses-20",
+    "de-DE": "https://www.amazon.de/?tag=lordoftabsde-20",
+    "default": "https://www.amazon.com/?tag=lordoftabsus-20"
+  },
+  mercadolivre: {
+    "pt-BR": "https://www.mercadolivre.com.br/seu-link-br",
+    "es-AR": "https://www.mercadolibre.com.ar/seu-link-ar",
+    "es-MX": "https://www.mercadolibre.com.mx/seu-link-mx",
+    "es-CL": "https://www.mercadolibre.cl/seu-link-cl",
+    "default": "https://www.mercadolivre.com.br/seu-link-br"
+  },
+  aliexpress: {
+    "default": "https://s.click.aliexpress.com/e/seu-id-global"
+  }
 };
+const activeAffiliateLinks = { amazon: '', mercadolivre: '', aliexpress: '' };
 let enableAffiliateSpeedDial = true;
+
+function aplicarAtalhosInternacionais() {
+  const lang = chrome.i18n.getUILanguage() || 'default';
+  ['amazon', 'mercadolivre', 'aliexpress'].forEach(partner => {
+    const partnerMap = GLOBAL_AFFILIATE_LINKS[partner];
+    activeAffiliateLinks[partner] = partnerMap[lang] || partnerMap[lang.substring(0, 2)] || partnerMap['default'];
+  });
+}
 let sortConfig = { key: 'importance', direction: 'desc' };
 let filters = { title: '', url: '', age: 0, importance: 0, exactUrl: false };
 let groupBy = 'window'; 
@@ -29,6 +52,7 @@ let vaultGroupBy = 'date';
 let lastVaultAccessTime = 0;
 
 document.addEventListener('DOMContentLoaded', async () => {
+  aplicarAtalhosInternacionais();
   const data = await chrome.storage.local.get(['popupSettings', 'lastVaultAccessTime']);
   settings = data.popupSettings || {};
   lastVaultAccessTime = data.lastVaultAccessTime || 0;
@@ -234,15 +258,15 @@ function setupEventListeners() {
   });
 
   document.getElementById('sd-amazon')?.addEventListener('click', () => {
-    chrome.tabs.create({ url: AFFILIATE_LINKS.amazon });
+    chrome.tabs.create({ url: activeAffiliateLinks.amazon });
   });
 
   document.getElementById('sd-mercadolivre')?.addEventListener('click', () => {
-    chrome.tabs.create({ url: AFFILIATE_LINKS.mercadolivre });
+    chrome.tabs.create({ url: activeAffiliateLinks.mercadolivre });
   });
 
   document.getElementById('sd-aliexpress')?.addEventListener('click', () => {
-    chrome.tabs.create({ url: AFFILIATE_LINKS.aliexpress });
+    chrome.tabs.create({ url: activeAffiliateLinks.aliexpress });
   });
 
   document.getElementById('btn-bundle-selected')?.addEventListener('click', async () => {
