@@ -914,25 +914,75 @@ function renderWorkspaces() {
     
     const dateStr = ws.createdAt ? new Date(ws.createdAt).toLocaleString() : 'N/A';
     
+    const tableRowsHTML = ws.tabs.map(t => {
+      const favUrl = `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(t.url)}&size=32`;
+      return `
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 6px; width: 24px; border: none; background: transparent;"><img src="${favUrl}" width="16" height="16" style="vertical-align: middle;"></td>
+          <td style="padding: 6px; font-weight: 500; color: #1e293b; max-width: 180px; border: none; background: transparent;" class="truncate" title="${t.title || t.url}">${t.title || 'Untitled'}</td>
+          <td style="padding: 6px; max-width: 150px; border: none; background: transparent;" class="truncate"><a href="${t.url}" target="_blank" style="color: #2563eb; text-decoration: none;" title="${t.url}">${t.url}</a></td>
+        </tr>
+      `;
+    }).join('');
+
     card.innerHTML = `
-      <div class="workspace-header">
-        <div class="workspace-title-group">
+      <div class="workspace-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div class="workspace-title-group" style="text-align: left;">
           <span class="workspace-name">${ws.name}</span>
           <span class="workspace-date">Created: ${dateStr}</span>
         </div>
+        <div class="workspace-view-toggle" style="display: flex; gap: 2px; background: #f1f5f9; padding: 2px; border-radius: 6px; border: 1px solid #e2e8f0; margin-left: 8px;">
+          <button class="btn-ws-view-grid active" title="Grid View" style="border: none; background: #2563eb; color: white; padding: 3px 6px; font-size: 10px; font-weight: 600; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Grid</button>
+          <button class="btn-ws-view-list" title="List View" style="border: none; background: transparent; color: #64748b; padding: 3px 6px; font-size: 10px; font-weight: 600; border-radius: 4px; cursor: pointer; transition: all 0.2s;">List</button>
+        </div>
       </div>
-      <div class="workspace-stats">
+      <div class="workspace-stats" style="text-align: left; margin-top: 8px;">
         <span><b>${ws.tabCount}</b> Tabs Total</span>
       </div>
-      <div class="workspace-tabs-preview">
+      
+      <!-- Grid Preview -->
+      <div class="workspace-tabs-preview" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px;">
         ${faviconsHTML}
         ${ws.tabs.length > 10 ? `<span style="font-size:11px; color:#64748b; align-self:center; margin-left:4px;">+${ws.tabs.length - 10} more</span>` : ''}
       </div>
-      <div class="workspace-actions">
-        <button class="primary btn-restore-ws" style="padding: 6px 12px; font-size: 12px;">Restore Workspace</button>
+
+      <!-- List (Table) Preview -->
+      <div class="workspace-tabs-table" style="display: none; max-height: 180px; overflow-y: auto; margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 6px; background: white;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed;">
+          <tbody>
+            ${tableRowsHTML}
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="workspace-actions" style="margin-top: 12px; display: flex; gap: 8px;">
+        <button class="primary btn-restore-ws" style="padding: 6px 12px; font-size: 12px; flex: 1;">Restore Workspace</button>
         <button class="danger btn-delete-ws" style="padding: 6px 12px; font-size: 12px;">Delete</button>
       </div>
     `;
+
+    const gridBtn = card.querySelector('.btn-ws-view-grid');
+    const listBtn = card.querySelector('.btn-ws-view-list');
+    const gridContainer = card.querySelector('.workspace-tabs-preview');
+    const listContainer = card.querySelector('.workspace-tabs-table');
+    
+    gridBtn.addEventListener('click', () => {
+      gridBtn.style.background = '#2563eb';
+      gridBtn.style.color = 'white';
+      listBtn.style.background = 'transparent';
+      listBtn.style.color = '#64748b';
+      gridContainer.style.display = 'flex';
+      listContainer.style.display = 'none';
+    });
+    
+    listBtn.addEventListener('click', () => {
+      listBtn.style.background = '#2563eb';
+      listBtn.style.color = 'white';
+      gridBtn.style.background = 'transparent';
+      gridBtn.style.color = '#64748b';
+      gridContainer.style.display = 'none';
+      listContainer.style.display = 'block';
+    });
     
     card.querySelector('.btn-restore-ws').addEventListener('click', async () => {
       const inNewWindow = confirm("Do you want to restore this workspace in a new window?\n\n(Click 'Cancel' to open in the current window)");
