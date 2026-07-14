@@ -480,6 +480,11 @@ function setupEventListeners() {
     channel.postMessage({ action: 'update_meta' });
   });
 
+  document.getElementById('bmc-popup-btn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: 'https://www.buymeacoffee.com/lordoftabs' });
+  });
+
   document.getElementById('panic-domains')?.addEventListener('input', async (e) => {
     const rawValue = e.target.value;
     const array = rawValue.split(',')
