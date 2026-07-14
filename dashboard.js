@@ -38,6 +38,46 @@ function aplicarAtalhosInternacionais() {
     activeAffiliateLinks[partner] = partnerMap[lang] || partnerMap[lang.substring(0, 2)] || partnerMap['default'];
   });
 }
+
+const PROMO_BANNERS = {
+  "pt-BR": {
+    image: "https://images-na.ssl-images-amazon.com/images/G/32/br-associates/2023/Associates_Banner_300x250.jpg",
+    url: "https://www.amazon.com.br/?tag=lordoftabsbr-20",
+    alt: "Apoie o Lord of the Tabs comprando na Amazon Brasil!"
+  },
+  "es-ES": {
+    image: "https://images-na.ssl-images-amazon.com/images/G/30/es-associates/2023/Associates_Banner_300x250.jpg",
+    url: "https://www.amazon.es/?tag=lordoftabses-20",
+    alt: "¡Apoya Lord of the Tabs comprando en Amazon España!"
+  },
+  "default": {
+    image: "https://images-na.ssl-images-amazon.com/images/G/01/associates/2023/Associates_Banner_300x250.jpg",
+    url: "https://www.amazon.com/?tag=lordoftabsus-20",
+    alt: "Support Lord of the Tabs by shopping at Amazon!"
+  }
+};
+
+function renderPromoSidebar() {
+  const lang = chrome.i18n.getUILanguage() || 'default';
+  const banner = PROMO_BANNERS[lang] || PROMO_BANNERS[lang.substring(0, 2)] || PROMO_BANNERS['default'];
+  
+  const bannerContainer = document.getElementById('affiliate-banner-container');
+  if (bannerContainer && banner) {
+    bannerContainer.innerHTML = `
+      <a id="sidebar-promo-link" href="${banner.url}" target="_blank" style="display: block; text-decoration: none; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: transform 0.2s;">
+        <div style="background: #f8fafc; padding: 12px; font-weight: bold; font-size: 12px; color: #475569; text-align: center; border-bottom: 1px solid #e2e8f0;">
+          Featured Deal of the Day
+        </div>
+        <img src="${banner.image}" alt="${banner.alt}" style="width: 100%; height: auto; display: block;">
+      </a>
+    `;
+    
+    document.getElementById('sidebar-promo-link')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      chrome.tabs.create({ url: banner.url });
+    });
+  }
+}
 let sortConfig = { key: 'importance', direction: 'desc' };
 let filters = { title: '', url: '', age: 0, importance: 0, exactUrl: false };
 let groupBy = 'window'; 
@@ -291,6 +331,11 @@ function setupEventListeners() {
     chrome.tabs.create({ url: activeAffiliateLinks.aliexpress });
   });
 
+  document.getElementById('bmc-btn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: 'https://www.buymeacoffee.com/lordoftabs' });
+  });
+
   document.getElementById('btn-backup')?.addEventListener('click', async () => {
     await triggerBackupDownload();
   });
@@ -513,6 +558,19 @@ function render() {
   const speedDialSection = document.getElementById('speed-dial-section');
   if (speedDialSection) {
     speedDialSection.style.display = enableAffiliateSpeedDial ? 'flex' : 'none';
+  }
+
+  const mainContainer = document.getElementById('main-layout-container');
+  const sidebar = document.getElementById('promo-sidebar');
+  if (mainContainer && sidebar) {
+    if (enableAffiliateSpeedDial) {
+      sidebar.style.display = 'flex';
+      mainContainer.classList.add('has-sidebar');
+      renderPromoSidebar();
+    } else {
+      sidebar.style.display = 'none';
+      mainContainer.classList.remove('has-sidebar');
+    }
   }
   
   if (currentView === 'table') renderTable(processed); 
