@@ -935,8 +935,14 @@ function renderWorkspaces() {
     `;
     
     card.querySelector('.btn-restore-ws').addEventListener('click', async () => {
-      for (const t of ws.tabs) {
-        await chrome.tabs.create({ url: t.url, active: false });
+      const inNewWindow = confirm("Do you want to restore this workspace in a new window?\n\n(Click 'Cancel' to open in the current window)");
+      if (inNewWindow) {
+        const urls = ws.tabs.map(t => t.url);
+        await chrome.windows.create({ url: urls });
+      } else {
+        for (const t of ws.tabs) {
+          await chrome.tabs.create({ url: t.url, active: false });
+        }
       }
     });
     
