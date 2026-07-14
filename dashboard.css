@@ -3,16 +3,16 @@ body {
   background: #f1f5f9; 
   color: #1e293b; 
   margin: 0; 
-  padding: 24px; 
+  padding: 12px; 
 }
 
 .header { 
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   background: white;
-  padding: 16px 24px;
+  padding: 8px 16px;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
@@ -29,10 +29,10 @@ body {
   justify-content: space-between;
   align-items: center;
   background: white;
-  padding: 12px 20px;
+  padding: 8px 16px;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .toolbar-left, .toolbar-right {
@@ -711,25 +711,20 @@ path.slice-highlight {
 .speed-dial-section {
   background: white;
   border-radius: 12px;
-  padding: 16px 20px;
+  padding: 8px 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
   border: 1px solid #e2e8f0;
-}
-
-.speed-dial-title {
-  font-weight: bold;
-  font-size: 14px;
-  color: #475569;
-  text-align: left;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .speed-dial-grid {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -737,36 +732,35 @@ path.slice-highlight {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 12px 20px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
-  min-width: 160px;
 }
 
 .speed-dial-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
   border-color: #cbd5e1;
   background: #f1f5f9;
 }
 
 .sd-icon {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 4px;
 }
 
 .sd-name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: #1e293b;
 }
 
 .speed-dial-disclosure {
-  font-size: 10px;
+  font-size: 11px;
   color: #94a3b8;
-  text-align: left;
+  text-align: right;
 }
