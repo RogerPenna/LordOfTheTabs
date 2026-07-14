@@ -11,6 +11,7 @@
       <img src="logo_transparent.png" alt="Logo" style="height: 32px; width: auto;">
       <h1>Lord of the Tabs</h1>
       <span id="tab-count" class="badge">0 Tabs</span>
+      <span id="backup-alert-badge" class="badge" style="background: #ef4444; color: white; display: none; cursor: pointer;" title="Your backup is overdue! Click to download backup now.">⚠️ Backup Overdue!</span>
     </div>
     <div class="view-nav">
       <button id="btn-view-table" class="nav-btn active">📋 Table</button>
@@ -21,7 +22,9 @@
     <div class="global-actions">
       <button id="btn-refresh" class="secondary">↻ Refresh</button>
       <button id="btn-export-csv" class="secondary">Export CSV</button>
-      <button id="btn-backup" class="primary">Backup</button>
+      <button id="btn-backup" class="primary" title="Export all settings and data to JSON">Backup</button>
+      <button id="btn-restore" class="secondary" title="Import database from JSON backup file">Restore</button>
+      <input type="file" id="backup-file-input" style="display: none;" accept=".json">
       <button id="btn-help" class="secondary" title="Help & Documentation">❓ Help</button>
     </div>
   </div>

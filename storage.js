@@ -157,3 +157,50 @@ export async function cleanupOldMeta() {
     tx.onerror = () => reject(tx.error);
   });
 }
+
+export async function exportAllData() {
+  const [tabMetadata, archivedTabs, workspaces] = await Promise.all([
+    new Promise(async (resolve, reject) => {
+      const db = await openDB();
+      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    }),
+    getArchivedTabs(),
+    getAllWorkspaces()
+  ]);
+  return { tabMetadata, archivedTabs, workspaces };
+}
+
+export async function importAllData(data) {
+  const db = await openDB();
+  
+  if (data.tabMetadata) {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.clear();
+    for (const item of data.tabMetadata) {
+      store.put(item);
+    }
+  }
+  
+  if (data.archivedTabs) {
+    const tx = db.transaction(ARCHIVE_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(ARCHIVE_STORE_NAME);
+    store.clear();
+    for (const item of data.archivedTabs) {
+      store.put(item);
+    }
+  }
+  
+  if (data.workspaces) {
+    const tx = db.transaction(WORKSPACE_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(WORKSPACE_STORE_NAME);
+    store.clear();
+    for (const item of data.workspaces) {
+      store.put(item);
+    }
+  }
+}

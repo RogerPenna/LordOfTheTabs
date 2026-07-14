@@ -121,6 +121,16 @@ function applyLayoutSettings() {
     }
   });
 
+  const backupIntervalDaysInput = document.getElementById('backup-interval-days');
+  if (backupIntervalDaysInput) {
+    backupIntervalDaysInput.value = settings.backupIntervalDays || 7;
+  }
+
+  const backupModeSelect = document.getElementById('backup-mode');
+  if (backupModeSelect) {
+    backupModeSelect.value = settings.backupMode || 'alert';
+  }
+
   const panicDomainsTextarea = document.getElementById('panic-domains');
   if (panicDomainsTextarea) {
     const list = settings.panicDomains || DEFAULT_ADULT_DOMAINS;
@@ -455,6 +465,19 @@ function setupEventListeners() {
     chrome.storage.sync.set({ enableAffiliateSpeedDial: e.target.checked }, () => {
       channel.postMessage({ action: 'update_meta' });
     });
+  });
+
+  document.getElementById('backup-interval-days')?.addEventListener('change', (e) => {
+    const val = parseInt(e.target.value) || 7;
+    settings.backupIntervalDays = val;
+    saveSettings();
+    channel.postMessage({ action: 'update_meta' });
+  });
+
+  document.getElementById('backup-mode')?.addEventListener('change', (e) => {
+    settings.backupMode = e.target.value;
+    saveSettings();
+    channel.postMessage({ action: 'update_meta' });
   });
 
   document.getElementById('panic-domains')?.addEventListener('input', async (e) => {

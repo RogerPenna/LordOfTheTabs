@@ -764,3 +764,25 @@ path.slice-highlight {
   color: #94a3b8;
   text-align: right;
 }
+
+/* Backup Alert Badge Styling */
+#backup-alert-badge {
+  background: #ef4444 !important;
+  color: white !important;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 8px;
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}

@@ -1,7 +1,7 @@
 import { 
   getTabMeta, saveTabMeta, getArchivedTabs, 
   deleteArchivedTab, saveWorkspace, getAllWorkspaces, 
-  deleteWorkspace 
+  deleteWorkspace, exportAllData, importAllData 
 } from './storage.js';
 
 const channel = new BroadcastChannel('tab_sync');
@@ -50,10 +50,11 @@ let currentView = 'table';
 let settings = {};
 let vaultGroupBy = 'date';
 let lastVaultAccessTime = 0;
+let lastBackupTime = 0;
 
 document.addEventListener('DOMContentLoaded', async () => {
   aplicarAtalhosInternacionais();
-  const data = await chrome.storage.local.get(['popupSettings', 'lastVaultAccessTime']);
+  const data = await chrome.storage.local.get(['popupSettings', 'lastVaultAccessTime', 'lastBackupTime']);
   settings = data.popupSettings || {};
   lastVaultAccessTime = data.lastVaultAccessTime || 0;
   
@@ -65,10 +66,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  lastBackupTime = data.lastBackupTime || 0;
+
   await loadData();
   setupEventListeners();
   setupViewNavigation();
   render();
+
+  // Check backup interval status
+  const backupInterval = settings.backupIntervalDays || 7;
+  const backupMode = settings.backupMode || 'alert';
+  const overdue = (Date.now() - lastBackupTime) > (backupInterval * 24 * 60 * 60 * 1000);
+  
+  if (overdue) {
+    if (backupMode === 'auto') {
+      triggerBackupDownload();
+    } else {
+      const alertEl = document.getElementById('backup-alert-badge');
+      if (alertEl) {
+        alertEl.style.display = 'inline-block';
+        alertEl.addEventListener('click', () => {
+          triggerBackupDownload();
+        });
+      }
+    }
+  }
 });
 
 channel.onmessage = (msg) => {
@@ -267,6 +289,37 @@ function setupEventListeners() {
 
   document.getElementById('sd-aliexpress')?.addEventListener('click', () => {
     chrome.tabs.create({ url: activeAffiliateLinks.aliexpress });
+  });
+
+  document.getElementById('btn-backup')?.addEventListener('click', async () => {
+    await triggerBackupDownload();
+  });
+
+  document.getElementById('btn-restore')?.addEventListener('click', () => {
+    document.getElementById('backup-file-input')?.click();
+  });
+
+  document.getElementById('backup-file-input')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const backup = JSON.parse(event.target.result);
+        if (confirm("Are you sure you want to restore? This will overwrite all your current data, archives, and workspaces!")) {
+          await importAllData(backup.db);
+          if (backup.settings) {
+            await chrome.storage.local.set({ popupSettings: backup.settings });
+          }
+          alert("Restore completed successfully! Reloading data...");
+          window.location.reload();
+        }
+      } catch (err) {
+        alert("Failed to parse backup file: " + err.message);
+      }
+    };
+    reader.readAsText(file);
   });
 
   document.getElementById('btn-bundle-selected')?.addEventListener('click', async () => {
@@ -1055,4 +1108,38 @@ function renderRecentWindows() {
     
     container.appendChild(card);
   });
+}
+
+async function triggerBackupDownload() {
+  const data = await exportAllData();
+  const settingsData = await chrome.storage.local.get('popupSettings');
+  const backupObject = {
+    version: 3,
+    exportedAt: Date.now(),
+    db: data,
+    settings: settingsData.popupSettings || {}
+  };
+  
+  const blob = new Blob([JSON.stringify(backupObject, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const filename = `LotT.${yyyy}.${mm}.${dd}.json`;
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  
+  URL.revokeObjectURL(url);
+  
+  const now = Date.now();
+  await chrome.storage.local.set({ lastBackupTime: now });
+  lastBackupTime = now;
+  
+  const alertEl = document.getElementById('backup-alert-badge');
+  if (alertEl) alertEl.style.display = 'none';
 }
