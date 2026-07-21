@@ -9,45 +9,56 @@ let allTabs = [];
 let archivedTabs = [];
 let savedWorkspaces = [];
 let recentWindows = [];
-const GLOBAL_AFFILIATE_LINKS = {
+const AFFILIATE_CONFIG = {
   amazon: {
-    "pt-BR": "https://www.amazon.com.br/?tag=lordoftabsbr-20",
-    "en-US": "https://www.amazon.com/?tag=lordoftabsus-20",
-    "es-ES": "https://www.amazon.es/?tag=lordoftabses-20",
-    "de-DE": "https://www.amazon.de/?tag=lordoftabsde-20",
-    "default": "https://www.amazon.com/?tag=lordoftabsus-20"
-  },
-  mercadolivre: {
-    "pt-BR": "https://www.mercadolivre.com.br/seu-link-br",
-    "es-AR": "https://www.mercadolibre.com.ar/seu-link-ar",
-    "es-MX": "https://www.mercadolibre.com.mx/seu-link-mx",
-    "es-CL": "https://www.mercadolibre.cl/seu-link-cl",
-    "default": "https://www.mercadolivre.com.br/seu-link-br"
-  },
-  aliexpress: {
-    "default": "https://s.click.aliexpress.com/e/seu-id-global"
+    tagBR: "lordofthetabs-20",
+    baseUrlBR: "https://www.amazon.com.br",
+    baseUrlUS: "https://www.amazon.com"
   }
 };
+
+const GLOBAL_AFFILIATE_LINKS = {
+  "pt-BR": {
+    amazon: `${AFFILIATE_CONFIG.amazon.baseUrlBR}/?tag=${AFFILIATE_CONFIG.amazon.tagBR}`,
+    mercadolivre: "https://www.mercadolivre.com.br", // Reservado para Skimlinks
+    aliexpress: "https://pt.aliexpress.com"
+  },
+  "default": {
+    amazon: `${AFFILIATE_CONFIG.amazon.baseUrlUS}/?tag=${AFFILIATE_CONFIG.amazon.tagBR}`, // Triga o OneLink
+    aliexpress: "https://www.aliexpress.com"
+  }
+};
+
 const activeAffiliateLinks = { amazon: '', mercadolivre: '', aliexpress: '' };
 let enableAffiliateSpeedDial = true;
 
-function aplicarAtalhosInternacionais() {
-  const lang = chrome.i18n.getUILanguage() || 'default';
-  ['amazon', 'mercadolivre', 'aliexpress'].forEach(partner => {
-    const partnerMap = GLOBAL_AFFILIATE_LINKS[partner];
-    activeAffiliateLinks[partner] = partnerMap[lang] || partnerMap[lang.substring(0, 2)] || partnerMap['default'];
-  });
+function getAmazonAffiliateUrl(originalUrl) {
+  if (!originalUrl) return '';
+  try {
+    const url = new URL(originalUrl);
+    url.searchParams.set('tag', AFFILIATE_CONFIG.amazon.tagBR);
+    return url.toString();
+  } catch (e) {
+    if (originalUrl.includes('?')) {
+      return originalUrl.includes('tag=') ? originalUrl : `${originalUrl}&tag=${AFFILIATE_CONFIG.amazon.tagBR}`;
+    }
+    return `${originalUrl}?tag=${AFFILIATE_CONFIG.amazon.tagBR}`;
+  }
 }
 
-
+function aplicarAtalhosInternacionais() {
+  const lang = (chrome.i18n?.getUILanguage?.() || navigator.language || 'default');
+  const localeConfig = GLOBAL_AFFILIATE_LINKS[lang] || GLOBAL_AFFILIATE_LINKS[lang.substring(0, 2)] || GLOBAL_AFFILIATE_LINKS['default'];
+  
+  activeAffiliateLinks.amazon = getAmazonAffiliateUrl(localeConfig.amazon);
+  activeAffiliateLinks.mercadolivre = localeConfig.mercadolivre || GLOBAL_AFFILIATE_LINKS['default'].mercadolivre || "https://www.mercadolivre.com.br";
+  activeAffiliateLinks.aliexpress = localeConfig.aliexpress || GLOBAL_AFFILIATE_LINKS['default'].aliexpress;
+}
 
 function renderPromoSidebar() {
-  const lang = chrome.i18n.getUILanguage() || 'default';
-  const amazonLinks = GLOBAL_AFFILIATE_LINKS.amazon;
-  const targetUrl = amazonLinks[lang] || amazonLinks[lang.substring(0, 2)] || amazonLinks['default'];
-  
   const bannerLink = document.getElementById('sidebar-dynamic-banner');
   if (bannerLink) {
+    const targetUrl = activeAffiliateLinks.amazon;
     bannerLink.onclick = (e) => {
       e.preventDefault();
       chrome.tabs.create({ url: targetUrl });
