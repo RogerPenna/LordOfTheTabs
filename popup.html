@@ -201,7 +201,10 @@
 
             <!-- Collapsible Tab Capture Container -->
             <div id="panic-tab-capture-box" style="display: none; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; margin-top: 4px;">
-              <div style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 6px;">Select Open Tab Domains:</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 11px; font-weight: bold; color: #334155;">Select Open Tab Domains:</span>
+                <button id="btn-panic-select-all" type="button" style="font-size: 10px; color: #2563eb; background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0;">Select/Deselect All</button>
+              </div>
               <div id="panic-tab-capture-list" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
               <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;">
                 <button id="btn-panic-confirm-capture" class="primary" style="font-size: 10px; padding: 3px 8px;">Add Selected</button>
@@ -219,10 +222,21 @@
             <!-- Rendered by JS -->
           </div>
 
+          <!-- Change PIN Section -->
+          <div id="panic-change-pin-box" style="display: none; margin-top: 8px; padding: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;">
+            <div style="font-size: 11px; color: #166534; margin-bottom: 6px; font-weight: 600;">Enter New 4-Digit PIN:</div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <input type="password" id="panic-new-pin-input" maxlength="4" placeholder="••••" style="width: 80px; padding: 4px 8px; font-size: 13px; text-align: center; font-family: monospace; border: 1px solid #86efac; border-radius: 4px;">
+              <button id="btn-panic-save-new-pin" class="primary" style="font-size: 11px; padding: 4px 10px; background: #22c55e; color: white; border: none; border-radius: 4px; cursor: pointer;">Save & Email</button>
+              <button id="btn-panic-cancel-change" style="font-size: 11px; color: #ef4444; background: none; border: none; cursor: pointer; text-decoration: underline;">Cancel</button>
+            </div>
+          </div>
+
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-            <small style="font-size: 10px; color: #64748b;">Closed via Ctrl+Shift+Y. Active tab adds itself via Ctrl+Shift+U.</small>
+            <button id="btn-panic-change-pin" style="font-size: 10px; color: #2563eb; background: none; border: none; cursor: pointer; text-decoration: underline;">🔑 Change PIN</button>
             <button id="btn-panic-relock" style="font-size: 10px; color: #ef4444; background: none; border: none; cursor: pointer; text-decoration: underline;">Lock Settings</button>
           </div>
+          <small style="font-size: 10px; color: #64748b; display: block; margin-top: 6px;">Closed via Ctrl+Shift+Y. Active tab adds itself via Ctrl+Shift+U.</small>
         </div>
       </div>
     </div>

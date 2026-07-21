@@ -673,9 +673,9 @@ function renderPanicDomainsList(filterQuery = '') {
   }
 
   container.innerHTML = filtered.map(domain => `
-    <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 11px; font-family: monospace;">
-      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${domain}</span>
-      <button class="btn-delete-panic-domain" data-domain="${domain}" style="border: none; background: none; cursor: pointer; font-size: 12px; color: #ef4444;" title="Delete domain">🗑️</button>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 2px 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 10px; font-family: monospace; margin-bottom: 2px; box-sizing: border-box; width: 100%;">
+      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px;">${domain}</span>
+      <button class="btn-delete-panic-domain" data-domain="${domain}" style="border: none; background: none; cursor: pointer; font-size: 11px; color: #ef4444; padding: 0; display: inline-flex;" title="Delete domain">🗑️</button>
     </div>
   `).join('');
 
@@ -725,6 +725,44 @@ function setupPanicModeListeners() {
   document.getElementById('btn-panic-relock')?.addEventListener('click', () => {
     isPanicUnlocked = false;
     initPanicMode();
+  });
+
+  document.getElementById('btn-panic-change-pin')?.addEventListener('click', () => {
+    const box = document.getElementById('panic-change-pin-box');
+    if (box) {
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+      document.getElementById('panic-new-pin-input').value = '';
+    }
+  });
+
+  document.getElementById('btn-panic-cancel-change')?.addEventListener('click', () => {
+    const box = document.getElementById('panic-change-pin-box');
+    if (box) {
+      box.style.display = 'none';
+      document.getElementById('panic-new-pin-input').value = '';
+    }
+  });
+
+  document.getElementById('btn-panic-save-new-pin')?.addEventListener('click', async () => {
+    const newPin = document.getElementById('panic-new-pin-input')?.value?.trim();
+    if (!newPin || newPin.length !== 4 || isNaN(newPin)) {
+      alert('Please enter a valid 4-digit numeric PIN.');
+      return;
+    }
+
+    await chrome.storage.local.set({ panicPin: newPin });
+    currentPanicPin = newPin;
+
+    // Trigger Gmail Compose Auto-Backup with logged-in user email
+    chrome.identity.getProfileUserInfo((userInfo) => {
+      const email = userInfo ? userInfo.email : '';
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent('Lord of the Tabs - Your Panic Mode PIN')}&body=${encodeURIComponent('Your registered PIN for Panic Mode is: ' + newPin)}`;
+      chrome.tabs.create({ url: gmailUrl });
+    });
+
+    alert('PIN updated successfully! A backup email compose window has been opened.');
+    const box = document.getElementById('panic-change-pin-box');
+    if (box) box.style.display = 'none';
   });
 
   document.getElementById('panic-domain-filter')?.addEventListener('input', (e) => {
@@ -782,6 +820,14 @@ function setupPanicModeListeners() {
       }).join('');
     }
     box.style.display = 'block';
+  });
+
+  document.getElementById('btn-panic-select-all')?.addEventListener('click', () => {
+    const checkboxes = document.querySelectorAll('.panic-tab-checkbox:not(:disabled)');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => {
+      cb.checked = !allChecked;
+    });
   });
 
   document.getElementById('btn-panic-confirm-capture')?.addEventListener('click', async () => {
