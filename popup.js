@@ -712,9 +712,12 @@ function setupPanicModeListeners() {
     currentPanicPin = pin;
     isPanicUnlocked = true;
 
-    // Trigger Gmail Compose Auto-Backup
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent('Lord of the Tabs - Seu PIN do Panic Mode')}&body=${encodeURIComponent('Seu PIN cadastrado para o Panic Mode eh: ' + pin)}`;
-    chrome.tabs.create({ url: gmailUrl });
+    // Trigger Gmail Compose Auto-Backup with logged-in user email
+    chrome.identity.getProfileUserInfo((userInfo) => {
+      const email = userInfo ? userInfo.email : '';
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent('Lord of the Tabs - Your Panic Mode PIN')}&body=${encodeURIComponent('Your registered PIN for Panic Mode is: ' + pin)}`;
+      chrome.tabs.create({ url: gmailUrl });
+    });
 
     initPanicMode();
   });
