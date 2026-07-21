@@ -300,16 +300,56 @@ function setupEventListeners() {
 
   document.getElementById('btn-merge-duplicates').addEventListener('click', async () => {
     const urlGroups = {};
+    const dashboardUrl = chrome.runtime.getURL('');
+
     allTabs.forEach(tab => {
+      // Skip extension internal pages
+      if (tab.url.startsWith('chrome-extension://') || tab.url.startsWith(dashboardUrl)) {
+        return;
+      }
       if (!urlGroups[tab.url]) urlGroups[tab.url] = [];
       urlGroups[tab.url].push(tab);
     });
+
+    let tabsToRemove = [];
     for (const url in urlGroups) {
       if (urlGroups[url].length > 1) {
-        const group = urlGroups[url].sort((a, b) => b.meta.ultimo_acesso - a.meta.ultimo_acesso);
-        await chrome.tabs.remove(group.slice(1).map(t => t.id));
+        // Sort by last access time descending
+        const group = urlGroups[url].sort((a, b) => {
+          const timeA = (a.meta && a.meta.ultimo_acesso) ? a.meta.ultimo_acesso : 0;
+          const timeB = (b.meta && b.meta.ultimo_acesso) ? b.meta.ultimo_acesso : 0;
+          return timeB - timeA;
+        });
+        // Keep the first (most recently accessed) tab, close the rest
+        const duplicates = group.slice(1);
+        duplicates.forEach(t => {
+          if (t.id && t.id !== activeTabId) { // Safety: don't close the currently active tab
+            tabsToRemove.push(t.id);
+          }
+        });
       }
     }
+
+    if (tabsToRemove.length > 0) {
+      try {
+        await chrome.tabs.remove(tabsToRemove);
+        alert(`Successfully merged duplicates. Closed ${tabsToRemove.length} duplicate tab(s).`);
+      } catch (err) {
+        console.error("Error closing duplicate tabs:", err);
+        // Fallback: try closing them one by one in case of a single bad ID
+        for (const id of tabsToRemove) {
+          try {
+            await chrome.tabs.remove(id);
+          } catch (e) {
+            console.warn(`Could not remove tab with ID ${id}:`, e);
+          }
+        }
+        alert(`Successfully merged duplicates (individual fallback). Closed duplicate tab(s).`);
+      }
+    } else {
+      alert("No duplicate tabs found to merge!");
+    }
+
     await loadData();
     render();
   });
