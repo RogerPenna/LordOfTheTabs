@@ -29,6 +29,7 @@ const GLOBAL_AFFILIATE_LINKS = {
   }
 };
 
+const SUPPORT_LINK = "https://buymeacoffee.com/rogerpenna";
 const activeAffiliateLinks = { amazon: '', mercadolivre: '', aliexpress: '' };
 let enableAffiliateSpeedDial = true;
 
@@ -316,6 +317,16 @@ function setupEventListeners() {
 
   document.getElementById('sd-aliexpress')?.addEventListener('click', () => {
     chrome.tabs.create({ url: activeAffiliateLinks.aliexpress });
+  });
+
+  document.getElementById('bmc-btn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: SUPPORT_LINK });
+  });
+
+  document.getElementById('btn-support')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: SUPPORT_LINK });
   });
 
 

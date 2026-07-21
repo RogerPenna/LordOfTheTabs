@@ -482,7 +482,7 @@ function setupEventListeners() {
 
   document.getElementById('bmc-popup-btn')?.addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'https://www.buymeacoffee.com/lordoftabs' });
+    chrome.tabs.create({ url: 'https://buymeacoffee.com/rogerpenna' });
   });
 
   document.getElementById('panic-domains')?.addEventListener('input', async (e) => {
