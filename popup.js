@@ -713,8 +713,11 @@ function setupPanicModeListeners() {
     isPanicUnlocked = true;
 
     // Trigger Gmail Compose Auto-Backup with logged-in user email
-    chrome.identity.getProfileUserInfo((userInfo) => {
-      const email = userInfo ? userInfo.email : '';
+    chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, (userInfo) => {
+      let email = userInfo ? userInfo.email : '';
+      if (!email) {
+        email = prompt("Gmail address not auto-detected. Enter your email to pre-fill the recipient:", "") || '';
+      }
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent('Lord of the Tabs - Your Panic Mode PIN')}&body=${encodeURIComponent('Your registered PIN for Panic Mode is: ' + pin)}`;
       chrome.tabs.create({ url: gmailUrl });
     });
@@ -754,8 +757,11 @@ function setupPanicModeListeners() {
     currentPanicPin = newPin;
 
     // Trigger Gmail Compose Auto-Backup with logged-in user email
-    chrome.identity.getProfileUserInfo((userInfo) => {
-      const email = userInfo ? userInfo.email : '';
+    chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, (userInfo) => {
+      let email = userInfo ? userInfo.email : '';
+      if (!email) {
+        email = prompt("Gmail address not auto-detected. Enter your email to pre-fill the recipient:", "") || '';
+      }
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent('Lord of the Tabs - Your Panic Mode PIN')}&body=${encodeURIComponent('Your registered PIN for Panic Mode is: ' + newPin)}`;
       chrome.tabs.create({ url: gmailUrl });
     });
