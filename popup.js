@@ -712,12 +712,10 @@ function setupPanicModeListeners() {
     currentPanicPin = pin;
     isPanicUnlocked = true;
 
-    // Trigger Gmail Compose Auto-Backup with logged-in user email
+    // Trigger Gmail Compose Auto-Backup with user email prompt
     chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, (userInfo) => {
-      let email = userInfo ? userInfo.email : '';
-      if (!email) {
-        email = prompt("Gmail address not auto-detected. Enter your email to pre-fill the recipient:", "") || '';
-      }
+      const detectedEmail = userInfo ? userInfo.email : '';
+      const email = prompt("Please enter your email address to send the PIN to yourself in case you forget it:", detectedEmail || "") || '';
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent('Lord of the Tabs - Your Panic Mode PIN')}&body=${encodeURIComponent('Your registered PIN for Panic Mode is: ' + pin)}`;
       chrome.tabs.create({ url: gmailUrl });
     });
@@ -756,12 +754,10 @@ function setupPanicModeListeners() {
     await chrome.storage.local.set({ panicPin: newPin });
     currentPanicPin = newPin;
 
-    // Trigger Gmail Compose Auto-Backup with logged-in user email
+    // Trigger Gmail Compose Auto-Backup with user email prompt
     chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, (userInfo) => {
-      let email = userInfo ? userInfo.email : '';
-      if (!email) {
-        email = prompt("Gmail address not auto-detected. Enter your email to pre-fill the recipient:", "") || '';
-      }
+      const detectedEmail = userInfo ? userInfo.email : '';
+      const email = prompt("Please enter your email address to send the PIN to yourself in case you forget it:", detectedEmail || "") || '';
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent('Lord of the Tabs - Your Panic Mode PIN')}&body=${encodeURIComponent('Your registered PIN for Panic Mode is: ' + newPin)}`;
       chrome.tabs.create({ url: gmailUrl });
     });
