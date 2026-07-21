@@ -673,9 +673,9 @@ function renderPanicDomainsList(filterQuery = '') {
   }
 
   container.innerHTML = filtered.map(domain => `
-    <div style="display: flex; align-items: center; justify-content: space-between; padding: 2px 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 10px; font-family: monospace; margin-bottom: 2px; box-sizing: border-box; width: 100%;">
-      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px;">${domain}</span>
-      <button class="btn-delete-panic-domain" data-domain="${domain}" style="border: none; background: none; cursor: pointer; font-size: 11px; color: #ef4444; padding: 0; display: inline-flex;" title="Delete domain">🗑️</button>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 11px; font-family: monospace; margin-bottom: 4px; box-sizing: border-box; width: 100%;">
+      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px;">${domain}</span>
+      <button class="btn-delete-panic-domain" data-domain="${domain}" style="border: none; background: none; cursor: pointer; font-size: 13px; color: #ef4444; padding: 0; display: inline-flex;" title="Delete domain">🗑️</button>
     </div>
   `).join('');
 
