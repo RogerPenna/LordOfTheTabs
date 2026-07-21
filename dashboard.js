@@ -84,7 +84,10 @@ function setupGoogleSearchForm() {
 }
 
 function renderSupportSection() {
-  const mode = settings.supportMode || 'shortcuts';
+  let mode = settings.supportMode || 'shortcuts';
+  if (mode !== 'coffee' && mode !== 'deals') {
+    mode = 'shortcuts';
+  }
 
   const speedDialEl = document.getElementById('speed-dial-section');
   const coffeeEl = document.getElementById('support-coffee-section');
