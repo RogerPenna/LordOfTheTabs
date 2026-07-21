@@ -55,6 +55,7 @@ async function loadSettings() {
   if (data.currentView) currentView = data.currentView;
   if (data.panicDomains) settings.panicDomains = data.panicDomains;
   applyLayoutSettings();
+  await initPanicMode();
 }
 
 async function saveSettings() {
@@ -494,17 +495,7 @@ function setupEventListeners() {
     chrome.tabs.create({ url: 'https://buymeacoffee.com/rogerpenna' });
   });
 
-  document.getElementById('panic-domains')?.addEventListener('input', async (e) => {
-    const rawValue = e.target.value;
-    const array = rawValue.split(',')
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    settings.panicDomains = array;
-    await chrome.storage.local.set({ panicDomains: array });
-    
-    // Broadcast a change so background or dashboard syncs
-    channel.postMessage({ action: 'update_meta' });
-  });
+  setupPanicModeListeners();
 
   document.getElementById('star-filter').addEventListener('change', render);
 
@@ -614,4 +605,200 @@ function setupEventListeners() {
       render();
     });
   }
+}
+
+let currentPanicDomains = [...DEFAULT_ADULT_DOMAINS];
+let currentPanicPin = null;
+let isPanicUnlocked = false;
+
+function cleanDomain(input) {
+  if (!input) return '';
+  let str = input.trim().toLowerCase();
+  str = str.replace(/^https?:\/\//i, '');
+  str = str.replace(/^www\./i, '');
+  str = str.split('/')[0];
+  str = str.split('?')[0];
+  str = str.split(':')[0];
+  return str;
+}
+
+async function initPanicMode() {
+  const data = await chrome.storage.local.get(['panicPin', 'panicDomains']);
+  currentPanicPin = data.panicPin || null;
+  currentPanicDomains = data.panicDomains || [...DEFAULT_ADULT_DOMAINS];
+
+  const pinBox = document.getElementById('panic-pin-box');
+  const managerPanel = document.getElementById('panic-manager-panel');
+  const lockStatus = document.getElementById('panic-lock-status');
+  const promptText = document.getElementById('panic-pin-prompt-text');
+  const unlockBtn = document.getElementById('btn-panic-unlock');
+  const setPinBtn = document.getElementById('btn-panic-set-pin');
+  const pinInput = document.getElementById('panic-pin-input');
+
+  if (isPanicUnlocked) {
+    if (pinBox) pinBox.style.display = 'none';
+    if (managerPanel) managerPanel.style.display = 'block';
+    if (lockStatus) lockStatus.innerText = '🔓 Unlocked';
+    renderPanicDomainsList();
+    return;
+  }
+
+  if (managerPanel) managerPanel.style.display = 'none';
+  if (pinBox) pinBox.style.display = 'block';
+  if (pinInput) pinInput.value = '';
+
+  if (!currentPanicPin) {
+    if (lockStatus) lockStatus.innerText = '🔓 Unset';
+    if (promptText) promptText.innerText = 'Create a 4-Digit PIN to protect Panic Mode:';
+    if (unlockBtn) unlockBtn.style.display = 'none';
+    if (setPinBtn) setPinBtn.style.display = 'inline-block';
+  } else {
+    if (lockStatus) lockStatus.innerText = '🔒 Locked';
+    if (promptText) promptText.innerText = 'Enter 4-Digit PIN to unlock Panic Mode settings:';
+    if (unlockBtn) unlockBtn.style.display = 'inline-block';
+    if (setPinBtn) setPinBtn.style.display = 'none';
+  }
+}
+
+function renderPanicDomainsList(filterQuery = '') {
+  const container = document.getElementById('panic-domains-list');
+  if (!container) return;
+  
+  const query = filterQuery.trim().toLowerCase();
+  const filtered = currentPanicDomains.filter(d => d.toLowerCase().includes(query));
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="font-size: 11px; color: #94a3b8; text-align: center; padding: 12px;">${query ? 'No matching domains found' : 'No panic domains configured'}</div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(domain => `
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 11px; font-family: monospace;">
+      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${domain}</span>
+      <button class="btn-delete-panic-domain" data-domain="${domain}" style="border: none; background: none; cursor: pointer; font-size: 12px; color: #ef4444;" title="Delete domain">🗑️</button>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.btn-delete-panic-domain').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const targetDomain = e.currentTarget.dataset.domain;
+      currentPanicDomains = currentPanicDomains.filter(d => d !== targetDomain);
+      await chrome.storage.local.set({ panicDomains: currentPanicDomains });
+      channel.postMessage({ action: 'update_meta' });
+      renderPanicDomainsList(document.getElementById('panic-domain-filter')?.value || '');
+    });
+  });
+}
+
+function setupPanicModeListeners() {
+  document.getElementById('btn-panic-unlock')?.addEventListener('click', () => {
+    const pin = document.getElementById('panic-pin-input')?.value?.trim();
+    if (pin === currentPanicPin) {
+      isPanicUnlocked = true;
+      initPanicMode();
+    } else {
+      alert('Incorrect PIN! Please try again.');
+    }
+  });
+
+  document.getElementById('btn-panic-set-pin')?.addEventListener('click', async () => {
+    const pin = document.getElementById('panic-pin-input')?.value?.trim();
+    if (!pin || pin.length !== 4 || isNaN(pin)) {
+      alert('Please enter a valid 4-digit numeric PIN.');
+      return;
+    }
+
+    await chrome.storage.local.set({ panicPin: pin });
+    currentPanicPin = pin;
+    isPanicUnlocked = true;
+
+    // Trigger Gmail Compose Auto-Backup
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent('Lord of the Tabs - Seu PIN do Panic Mode')}&body=${encodeURIComponent('Seu PIN cadastrado para o Panic Mode eh: ' + pin)}`;
+    chrome.tabs.create({ url: gmailUrl });
+
+    initPanicMode();
+  });
+
+  document.getElementById('btn-panic-relock')?.addEventListener('click', () => {
+    isPanicUnlocked = false;
+    initPanicMode();
+  });
+
+  document.getElementById('panic-domain-filter')?.addEventListener('input', (e) => {
+    renderPanicDomainsList(e.target.value);
+  });
+
+  document.getElementById('btn-panic-add')?.addEventListener('click', async () => {
+    const input = document.getElementById('panic-add-input');
+    const domain = cleanDomain(input?.value);
+    if (!domain) return;
+
+    if (!currentPanicDomains.includes(domain)) {
+      currentPanicDomains.push(domain);
+      await chrome.storage.local.set({ panicDomains: currentPanicDomains });
+      channel.postMessage({ action: 'update_meta' });
+    }
+    input.value = '';
+    renderPanicDomainsList(document.getElementById('panic-domain-filter')?.value || '');
+  });
+
+  document.getElementById('btn-panic-capture-tabs')?.addEventListener('click', async () => {
+    const box = document.getElementById('panic-tab-capture-box');
+    if (!box) return;
+    const isHidden = box.style.display === 'none';
+    if (!isHidden) {
+      box.style.display = 'none';
+      return;
+    }
+
+    const tabs = await chrome.tabs.query({});
+    const domainsSet = new Set();
+    tabs.forEach(t => {
+      if (t.url) {
+        const domain = cleanDomain(t.url);
+        if (domain && !domain.startsWith('chrome') && domain.includes('.')) {
+          domainsSet.add(domain);
+        }
+      }
+    });
+
+    const listContainer = document.getElementById('panic-tab-capture-list');
+    if (!listContainer) return;
+
+    if (domainsSet.size === 0) {
+      listContainer.innerHTML = `<div style="font-size: 10px; color: #64748b;">No eligible web tab domains found.</div>`;
+    } else {
+      listContainer.innerHTML = Array.from(domainsSet).map(domain => {
+        const isAlreadyAdded = currentPanicDomains.includes(domain);
+        return `
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: monospace;">
+            <input type="checkbox" value="${domain}" class="panic-tab-checkbox" ${isAlreadyAdded ? 'disabled checked' : 'checked'}>
+            <span style="${isAlreadyAdded ? 'color: #94a3b8;' : 'color: #1e293b;'}">${domain} ${isAlreadyAdded ? '(Added)' : ''}</span>
+          </label>
+        `;
+      }).join('');
+    }
+    box.style.display = 'block';
+  });
+
+  document.getElementById('btn-panic-confirm-capture')?.addEventListener('click', async () => {
+    const checkboxes = document.querySelectorAll('.panic-tab-checkbox:checked:not(:disabled)');
+    let addedCount = 0;
+    checkboxes.forEach(cb => {
+      const val = cb.value;
+      if (val && !currentPanicDomains.includes(val)) {
+        currentPanicDomains.push(val);
+        addedCount++;
+      }
+    });
+
+    if (addedCount > 0) {
+      await chrome.storage.local.set({ panicDomains: currentPanicDomains });
+      channel.postMessage({ action: 'update_meta' });
+      renderPanicDomainsList(document.getElementById('panic-domain-filter')?.value || '');
+    }
+
+    const box = document.getElementById('panic-tab-capture-box');
+    if (box) box.style.display = 'none';
+  });
 }

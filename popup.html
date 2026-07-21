@@ -168,9 +168,62 @@
       </div>
 
       <div class="setting-group" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
-        <label for="panic-domains" style="font-weight: bold; color: var(--danger);">🚫 Panic Mode Domains</label>
-        <textarea id="panic-domains" rows="3" style="width: 100%; font-size: 11px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; resize: vertical; font-family: monospace;" placeholder="domain1.com, domain2.com, ..."></textarea>
-        <small style="font-size: 10px; color: #64748b;">Comma-separated list of domains to close instantly (Ctrl+Shift+Y). Active tab adds itself via Ctrl+Shift+U.</small>
+        <label style="font-weight: bold; color: var(--danger); display: flex; align-items: center; justify-content: space-between;">
+          <span>🚫 Panic Mode Domains</span>
+          <span id="panic-lock-status" style="font-size: 10px; font-weight: normal; color: #64748b;">🔒 Locked</span>
+        </label>
+
+        <!-- PIN Protection Box -->
+        <div id="panic-pin-box" style="margin-top: 8px; padding: 10px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px;">
+          <div id="panic-pin-prompt-text" style="font-size: 11px; color: #991b1b; margin-bottom: 6px; font-weight: 600;">
+            Enter 4-Digit PIN to unlock Panic Mode settings:
+          </div>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <input type="password" id="panic-pin-input" maxlength="4" placeholder="••••" style="width: 80px; padding: 4px 8px; font-size: 13px; text-align: center; font-family: monospace; border: 1px solid #fca5a5; border-radius: 4px;">
+            <button id="btn-panic-unlock" class="secondary" style="font-size: 11px; padding: 4px 10px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">Unlock</button>
+            <button id="btn-panic-set-pin" class="primary" style="font-size: 11px; padding: 4px 10px; display: none;">Save PIN</button>
+          </div>
+          <small id="panic-pin-help" style="font-size: 10px; color: #991b1b; display: block; margin-top: 4px;">A Gmail compose window will open for auto-backup when setting a new PIN.</small>
+        </div>
+
+        <!-- Unlocked Domain Manager Panel -->
+        <div id="panic-manager-panel" style="display: none; margin-top: 10px;">
+          <!-- Controls Toolbar: Add manual, Filter, Capture -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; gap: 6px;">
+              <input type="text" id="panic-add-input" placeholder="Add domain (e.g. example.com)" style="flex: 1; padding: 4px 8px; font-size: 11px; border: 1px solid var(--border); border-radius: 4px;">
+              <button id="btn-panic-add" class="primary" style="font-size: 11px; padding: 4px 8px;">Add</button>
+            </div>
+            
+            <button id="btn-panic-capture-tabs" class="secondary" style="font-size: 11px; padding: 5px 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <span>➕ Capture from Open Tabs</span>
+            </button>
+
+            <!-- Collapsible Tab Capture Container -->
+            <div id="panic-tab-capture-box" style="display: none; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; margin-top: 4px;">
+              <div style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 6px;">Select Open Tab Domains:</div>
+              <div id="panic-tab-capture-list" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+              <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;">
+                <button id="btn-panic-confirm-capture" class="primary" style="font-size: 10px; padding: 3px 8px;">Add Selected</button>
+              </div>
+            </div>
+
+            <!-- Search Filter -->
+            <div style="margin-top: 4px;">
+              <input type="text" id="panic-domain-filter" placeholder="🔍 Search panic domains..." style="width: 100%; padding: 4px 8px; font-size: 11px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box;">
+            </div>
+          </div>
+
+          <!-- Domain Items Vertical List -->
+          <div id="panic-domains-list" style="max-height: 140px; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px; background: #ffffff;">
+            <!-- Rendered by JS -->
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+            <small style="font-size: 10px; color: #64748b;">Closed via Ctrl+Shift+Y. Active tab adds itself via Ctrl+Shift+U.</small>
+            <button id="btn-panic-relock" style="font-size: 10px; color: #ef4444; background: none; border: none; cursor: pointer; text-decoration: underline;">Lock Settings</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
