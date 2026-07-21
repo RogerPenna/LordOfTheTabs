@@ -114,12 +114,15 @@ function applyLayoutSettings() {
     autoArchiveDaysInput.value = settings.autoArchiveDays || 3;
   }
 
-  chrome.storage.sync.get('enableAffiliateSpeedDial', (res) => {
-    const toggle = document.getElementById('affiliate_speed_dial_toggle');
-    if (toggle) {
-      toggle.checked = res.enableAffiliateSpeedDial !== false;
-    }
-  });
+  const showGoogleSearchToggle = document.getElementById('show-google-search-toggle');
+  if (showGoogleSearchToggle) {
+    showGoogleSearchToggle.checked = settings.showGoogleSearch !== false;
+  }
+
+  const supportModeSelect = document.getElementById('support-mode-select');
+  if (supportModeSelect) {
+    supportModeSelect.value = settings.supportMode || 'shortcuts';
+  }
 
   const backupIntervalDaysInput = document.getElementById('backup-interval-days');
   if (backupIntervalDaysInput) {
@@ -461,10 +464,16 @@ function setupEventListeners() {
     channel.postMessage({ action: 'update_meta' });
   });
 
-  document.getElementById('affiliate_speed_dial_toggle')?.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ enableAffiliateSpeedDial: e.target.checked }, () => {
-      channel.postMessage({ action: 'update_meta' });
-    });
+  document.getElementById('show-google-search-toggle')?.addEventListener('change', (e) => {
+    settings.showGoogleSearch = e.target.checked;
+    saveSettings();
+    channel.postMessage({ action: 'update_meta' });
+  });
+
+  document.getElementById('support-mode-select')?.addEventListener('change', (e) => {
+    settings.supportMode = e.target.value;
+    saveSettings();
+    channel.postMessage({ action: 'update_meta' });
   });
 
   document.getElementById('backup-interval-days')?.addEventListener('change', (e) => {

@@ -131,9 +131,20 @@
 
       <div class="setting-group" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
         <label style="display: flex; align-items: center; gap: 6px; font-weight: bold; color: var(--primary);">
-          <input type="checkbox" id="affiliate_speed_dial_toggle"> Enable Support Sidebar and Shortcuts on New Tab
+          <input type="checkbox" id="show-google-search-toggle"> Show Google Search Bar on Dashboard
         </label>
-        <small style="font-size: 10px; color: #64748b; display: block; margin-bottom: 8px;">Show quick shortcuts and a support sidebar on the Dashboard.</small>
+        <small style="font-size: 10px; color: #64748b;">Display top search bar to search Google or navigate to URLs.</small>
+      </div>
+
+      <div class="setting-group" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
+        <label for="support-mode-select" style="font-weight: bold; color: var(--primary);">❤️ Support & Monetization Mode</label>
+        <select id="support-mode-select" style="width: 100%; margin-top: 4px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px;">
+          <option value="shortcuts">Shopping Shortcuts (Default)</option>
+          <option value="coffee">Buy Me a Coffee Card</option>
+          <option value="deals">Deals of the Week</option>
+          <option value="disabled">Disabled (100% Clean)</option>
+        </select>
+        <small style="font-size: 10px; color: #64748b; display: block; margin-top: 4px; margin-bottom: 8px;">Select a single support style to display on the Dashboard.</small>
         <a href="https://buymeacoffee.com/rogerpenna" target="_blank" class="bmc-popup-btn" id="bmc-popup-btn" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: #FFDD00; color: #000000; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 11px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; transition: transform 0.1s;">
           <img src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg" alt="Buy me a coffee" style="height: 14px; width: auto;">
           <span>Buy me a Coffee</span>

@@ -56,14 +56,53 @@ function aplicarAtalhosInternacionais() {
   activeAffiliateLinks.aliexpress = localeConfig.aliexpress || GLOBAL_AFFILIATE_LINKS['default'].aliexpress;
 }
 
-function renderPromoSidebar() {
-  const bannerLink = document.getElementById('sidebar-dynamic-banner');
-  if (bannerLink) {
-    const targetUrl = activeAffiliateLinks.amazon;
-    bannerLink.onclick = (e) => {
-      e.preventDefault();
-      chrome.tabs.create({ url: targetUrl });
-    };
+function isDirectUrl(query) {
+  const trimmed = query.trim();
+  if (/^https?:\/\//i.test(trimmed)) return true;
+  if (/^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/i.test(trimmed) || /^localhost(:\d+)?(\/.*)?$/i.test(trimmed)) return true;
+  return false;
+}
+
+function setupGoogleSearchForm() {
+  const form = document.getElementById('google-search-form');
+  if (!form || form.dataset.initialized) return;
+  form.dataset.initialized = 'true';
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const query = document.getElementById('google-search-input')?.value?.trim();
+    if (!query) return;
+
+    if (isDirectUrl(query)) {
+      const url = /^https?:\/\//i.test(query) ? query : `https://${query}`;
+      window.location.href = url;
+    } else {
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+      window.location.href = searchUrl;
+    }
+  });
+}
+
+function renderSupportSection() {
+  const mode = settings.supportMode || 'shortcuts';
+
+  const speedDialEl = document.getElementById('speed-dial-section');
+  const coffeeEl = document.getElementById('support-coffee-section');
+  const dealsEl = document.getElementById('support-deals-section');
+
+  if (speedDialEl) speedDialEl.style.display = (mode === 'shortcuts') ? 'flex' : 'none';
+  if (coffeeEl) coffeeEl.style.display = (mode === 'coffee') ? 'flex' : 'none';
+  if (dealsEl) dealsEl.style.display = (mode === 'deals') ? 'flex' : 'none';
+
+  if (mode === 'deals') {
+    const dealsLink = document.getElementById('deals-dynamic-banner');
+    if (dealsLink) {
+      const targetUrl = activeAffiliateLinks.amazon;
+      dealsLink.onclick = (e) => {
+        e.preventDefault();
+        chrome.tabs.create({ url: targetUrl });
+      };
+    }
   }
 }
 let sortConfig = { key: 'importance', direction: 'desc' };
@@ -550,23 +589,14 @@ function render() {
     vaultBtn.classList.toggle('has-unread', hasNewVaultItems);
   }
 
-  const speedDialSection = document.getElementById('speed-dial-section');
-  if (speedDialSection) {
-    speedDialSection.style.display = enableAffiliateSpeedDial ? 'flex' : 'none';
+  const googleSearchSection = document.getElementById('google-search-section');
+  if (googleSearchSection) {
+    const showSearch = settings.showGoogleSearch !== false;
+    googleSearchSection.style.display = showSearch ? 'block' : 'none';
+    if (showSearch) setupGoogleSearchForm();
   }
 
-  const mainContainer = document.getElementById('main-layout-container');
-  const sidebar = document.getElementById('promo-sidebar');
-  if (mainContainer && sidebar) {
-    if (enableAffiliateSpeedDial) {
-      sidebar.style.display = 'flex';
-      mainContainer.classList.add('has-sidebar');
-      renderPromoSidebar();
-    } else {
-      sidebar.style.display = 'none';
-      mainContainer.classList.remove('has-sidebar');
-    }
-  }
+  renderSupportSection();
   
   if (currentView === 'table') renderTable(processed); 
   else if (currentView === 'charts') renderCharts();

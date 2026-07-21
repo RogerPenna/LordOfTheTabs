@@ -29,6 +29,14 @@
     </div>
   </div>
 
+  <div id="google-search-section" class="google-search-section" style="display: none;">
+    <form id="google-search-form" class="google-search-form">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="google-search-input" class="google-search-input" placeholder="Search Google or type a URL..." autocomplete="off">
+      <button type="submit" class="google-search-btn">Search</button>
+    </form>
+  </div>
+
   <div id="speed-dial-section" class="speed-dial-section" style="display: none;">
     <div class="speed-dial-grid">
       <div class="speed-dial-card" id="sd-amazon">
@@ -49,9 +57,36 @@
     </div>
   </div>
 
-  <div class="main-layout-container" id="main-layout-container">
-    <div class="left-content-area">
-      <div id="table-view" class="view-content">
+  <div id="support-coffee-section" class="support-coffee-section" style="display: none;">
+    <div class="coffee-card">
+      <div class="coffee-content">
+        <img src="logo_transparent.png" alt="Lord of the Tabs" class="coffee-logo">
+        <div>
+          <h4>Support Lord of the Tabs</h4>
+          <p>Enjoying Lord of the Tabs? Consider supporting independent development with a coffee!</p>
+        </div>
+      </div>
+      <a href="https://buymeacoffee.com/rogerpenna" target="_blank" class="coffee-btn" id="btn-support-coffee">
+        <img src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg" alt="Buy me a coffee">
+        <span>Buy me a Coffee</span>
+      </a>
+    </div>
+  </div>
+
+  <div id="support-deals-section" class="support-deals-section" style="display: none;">
+    <div class="deals-card">
+      <span class="deals-badge">Deals of the Week</span>
+      <a id="deals-dynamic-banner" href="#" target="_blank" class="deals-link">
+        <div class="deals-info">
+          <h4>Special Partner Deals & Discounts</h4>
+          <p>Discover exclusive weekly promotions on electronics, tech accessories, and tools.</p>
+        </div>
+        <span class="deals-btn">Browse Deals &rarr;</span>
+      </a>
+    </div>
+  </div>
+
+  <div id="table-view" class="view-content">
     <div class="toolbar" id="table-toolbar">
       <div class="toolbar-left">
         <label class="toolbar-label">
@@ -218,25 +253,6 @@
       <!-- Workspaces will be rendered here as cards -->
     </div>
   </div>
-  
-  <div id="promo-sidebar" class="promo-sidebar" style="display: none;">
-    <div class="sidebar-ad-card">
-      <span class="ad-badge">Sponsored</span>
-      <a id="sidebar-dynamic-banner" href="#" target="_blank" style="text-decoration: none; display: block; color: inherit;">
-        <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&auto=format&fit=crop&q=60" alt="Special Deals" class="ad-image">
-        <div class="ad-content">
-          <h4 id="ad-title">Special Deals of the Week</h4>
-          <p id="ad-description">Check out exclusive discounts on electronics and accessories with our partners.</p>
-          <span class="ad-button">View Deals</span>
-        </div>
-      </a>
-    </div>
-    
-    <div class="promo-sidebar-disclosure" style="font-size: 11px; color: #94a3b8; text-align: center; margin-top: 4px; line-height: 1.4;">
-      Purchase using our links or make a donation to support the development of Lord of the Tabs.
-    </div>
-  </div>
-</div>
-<script type="module" src="dashboard.js"></script>
+  <script type="module" src="dashboard.js"></script>
 </body>
 </html>
