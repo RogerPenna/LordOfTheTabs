@@ -11,6 +11,7 @@ let isAutoFitting = false;
 let settings = {
   density: 'normal', 
   calculatedCols: 5,
+  calculatedDensity: 'normal',
   narrowMode: false,
   exactSearch: false,
   setDashboardAsNewTab: true, // Default to true since manifest forces it
@@ -19,7 +20,11 @@ let settings = {
   ghostScope: 'domain',
   startupFocus: true,
   openDashboardInitial: false,
-  autoFit: false
+  autoFit: false,
+  panicType: 'blacklist',
+  panicMethod: 'tabSwap',
+  panicLandingPage: 'dashboard.html',
+  panicAutoCloseHours: 24
 };
 
 const channel = new BroadcastChannel('tab_sync');
@@ -50,10 +55,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadSettings() {
-  const data = await chrome.storage.local.get(['popupSettings', 'currentView', 'panicDomains']);
+  const data = await chrome.storage.local.get(['popupSettings', 'currentView', 'panicDomains', 'panicSafeDomains']);
   if (data.popupSettings) settings = { ...settings, ...data.popupSettings };
   if (data.currentView) currentView = data.currentView;
   if (data.panicDomains) settings.panicDomains = data.panicDomains;
+  if (data.panicSafeDomains) settings.panicSafeDomains = data.panicSafeDomains;
   applyLayoutSettings();
   await initPanicMode();
 }
@@ -63,16 +69,19 @@ async function saveSettings() {
 }
 
 function applyLayoutSettings() {
-  document.body.classList.remove('density-compact', 'density-tiny');
-  if (settings.density === 'compact') document.body.classList.add('density-compact');
-  if (settings.density === 'tiny') document.body.classList.add('density-tiny');
-  
+  let activeDensity = settings.density || 'normal';
   let currentCols = 5;
+
   if (settings.autoFit) {
+    activeDensity = settings.calculatedDensity || 'normal';
     currentCols = settings.calculatedCols || 5; 
   } else if (settings.narrowMode) {
     currentCols = 3;
   }
+
+  document.body.classList.remove('density-compact', 'density-tiny');
+  if (activeDensity === 'compact') document.body.classList.add('density-compact');
+  if (activeDensity === 'tiny') document.body.classList.add('density-tiny');
   
   document.documentElement.style.setProperty('--cols', currentCols);
   
@@ -139,6 +148,33 @@ function applyLayoutSettings() {
   if (panicDomainsTextarea) {
     const list = settings.panicDomains || DEFAULT_ADULT_DOMAINS;
     panicDomainsTextarea.value = list.join(', ');
+  }
+
+  const panicTypeSelect = document.getElementById('panic-type-select');
+  if (panicTypeSelect) {
+    panicTypeSelect.value = settings.panicType || 'blacklist';
+  }
+
+  const panicMethodSelect = document.getElementById('panic-method-select');
+  if (panicMethodSelect) {
+    panicMethodSelect.value = settings.panicMethod || 'tabSwap';
+  }
+
+  const panicLandingInput = document.getElementById('panic-landing-input');
+  if (panicLandingInput) {
+    panicLandingInput.value = settings.panicLandingPage || 'dashboard.html';
+  }
+
+  const panicAutoCloseInput = document.getElementById('panic-autoclose-input');
+  if (panicAutoCloseInput) {
+    panicAutoCloseInput.value = settings.panicAutoCloseHours || 24;
+  }
+
+  const panicManagerTitle = document.getElementById('panic-manager-title');
+  if (panicManagerTitle) {
+    panicManagerTitle.innerText = settings.panicType === 'whitelist' 
+      ? '✅ Whitelisted Safe Domains' 
+      : '🚫 Blacklisted Unsafe Domains';
   }
 }
 
@@ -350,11 +386,13 @@ async function autoFit() {
   ];
 
   for (const config of configs) {
-    settings.density = config.d;
+    settings.calculatedDensity = config.d;
     settings.calculatedCols = config.c;
     applyLayoutSettings();
 
-    await new Promise(r => requestAnimationFrame(r));
+    // Force layout reflow and yield to the event loop
+    canvas.getBoundingClientRect();
+    await new Promise(r => setTimeout(r, 0));
 
     const hasHorizontal = canvas.scrollWidth > canvas.clientWidth;
     if (!hasHorizontal) break;
@@ -409,6 +447,7 @@ function setupEventListeners() {
     if (settings.autoFit) autoFit();
     else {
       settings.calculatedCols = 5; 
+      settings.calculatedDensity = 'normal';
       applyLayoutSettings();
       render();
     }
@@ -608,6 +647,7 @@ function setupEventListeners() {
 }
 
 let currentPanicDomains = [...DEFAULT_ADULT_DOMAINS];
+let currentPanicSafeDomains = [];
 let currentPanicPin = null;
 let isPanicUnlocked = false;
 
@@ -623,9 +663,10 @@ function cleanDomain(input) {
 }
 
 async function initPanicMode() {
-  const data = await chrome.storage.local.get(['panicPin', 'panicDomains']);
+  const data = await chrome.storage.local.get(['panicPin', 'panicDomains', 'panicSafeDomains']);
   currentPanicPin = data.panicPin || null;
   currentPanicDomains = data.panicDomains || [...DEFAULT_ADULT_DOMAINS];
+  currentPanicSafeDomains = data.panicSafeDomains || [];
 
   const pinBox = document.getElementById('panic-pin-box');
   const managerPanel = document.getElementById('panic-manager-panel');
@@ -640,6 +681,19 @@ async function initPanicMode() {
     if (managerPanel) managerPanel.style.display = 'block';
     if (lockStatus) lockStatus.innerText = '🔓 Unlocked';
     renderPanicDomainsList();
+    
+    chrome.storage.local.get('lastPanicSession', (res) => {
+      const session = res.lastPanicSession || [];
+      const restoreBtn = document.getElementById('btn-panic-restore');
+      if (restoreBtn) {
+        if (session.length > 0) {
+          restoreBtn.style.display = 'flex';
+          restoreBtn.querySelector('span').innerText = `⚡ Restore Panic Session (${session.length} tabs)`;
+        } else {
+          restoreBtn.style.display = 'none';
+        }
+      }
+    });
     return;
   }
 
@@ -665,10 +719,12 @@ function renderPanicDomainsList(filterQuery = '') {
   if (!container) return;
   
   const query = filterQuery.trim().toLowerCase();
-  const filtered = currentPanicDomains.filter(d => d.toLowerCase().includes(query));
+  const isWhitelist = settings.panicType === 'whitelist';
+  const sourceList = isWhitelist ? currentPanicSafeDomains : currentPanicDomains;
+  const filtered = sourceList.filter(d => d.toLowerCase().includes(query));
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="font-size: 11px; color: #94a3b8; text-align: center; padding: 12px;">${query ? 'No matching domains found' : 'No panic domains configured'}</div>`;
+    container.innerHTML = `<div style="font-size: 11px; color: #94a3b8; text-align: center; padding: 12px;">${query ? 'No matching domains found' : (isWhitelist ? 'No safe domains configured' : 'No panic domains configured')}</div>`;
     return;
   }
 
@@ -682,8 +738,13 @@ function renderPanicDomainsList(filterQuery = '') {
   container.querySelectorAll('.btn-delete-panic-domain').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const targetDomain = e.currentTarget.dataset.domain;
-      currentPanicDomains = currentPanicDomains.filter(d => d !== targetDomain);
-      await chrome.storage.local.set({ panicDomains: currentPanicDomains });
+      if (isWhitelist) {
+        currentPanicSafeDomains = currentPanicSafeDomains.filter(d => d !== targetDomain);
+        await chrome.storage.local.set({ panicSafeDomains: currentPanicSafeDomains });
+      } else {
+        currentPanicDomains = currentPanicDomains.filter(d => d !== targetDomain);
+        await chrome.storage.local.set({ panicDomains: currentPanicDomains });
+      }
       channel.postMessage({ action: 'update_meta' });
       renderPanicDomainsList(document.getElementById('panic-domain-filter')?.value || '');
     });
@@ -776,10 +837,19 @@ function setupPanicModeListeners() {
     const domain = cleanDomain(input?.value);
     if (!domain) return;
 
-    if (!currentPanicDomains.includes(domain)) {
-      currentPanicDomains.push(domain);
-      await chrome.storage.local.set({ panicDomains: currentPanicDomains });
-      channel.postMessage({ action: 'update_meta' });
+    const isWhitelist = settings.panicType === 'whitelist';
+    if (isWhitelist) {
+      if (!currentPanicSafeDomains.includes(domain)) {
+        currentPanicSafeDomains.push(domain);
+        await chrome.storage.local.set({ panicSafeDomains: currentPanicSafeDomains });
+        channel.postMessage({ action: 'update_meta' });
+      }
+    } else {
+      if (!currentPanicDomains.includes(domain)) {
+        currentPanicDomains.push(domain);
+        await chrome.storage.local.set({ panicDomains: currentPanicDomains });
+        channel.postMessage({ action: 'update_meta' });
+      }
     }
     input.value = '';
     renderPanicDomainsList(document.getElementById('panic-domain-filter')?.value || '');
@@ -812,7 +882,9 @@ function setupPanicModeListeners() {
       listContainer.innerHTML = `<div style="font-size: 10px; color: #64748b;">No eligible web tab domains found.</div>`;
     } else {
       listContainer.innerHTML = Array.from(domainsSet).map(domain => {
-        const isAlreadyAdded = currentPanicDomains.includes(domain);
+        const isAlreadyAdded = settings.panicType === 'whitelist'
+          ? currentPanicSafeDomains.includes(domain)
+          : currentPanicDomains.includes(domain);
         return `
           <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-family: monospace;">
             <input type="checkbox" value="${domain}" class="panic-tab-checkbox" ${isAlreadyAdded ? 'disabled checked' : 'checked'}>
@@ -835,21 +907,83 @@ function setupPanicModeListeners() {
   document.getElementById('btn-panic-confirm-capture')?.addEventListener('click', async () => {
     const checkboxes = document.querySelectorAll('.panic-tab-checkbox:checked:not(:disabled)');
     let addedCount = 0;
+    const isWhitelist = settings.panicType === 'whitelist';
     checkboxes.forEach(cb => {
       const val = cb.value;
-      if (val && !currentPanicDomains.includes(val)) {
-        currentPanicDomains.push(val);
-        addedCount++;
+      if (val) {
+        if (isWhitelist) {
+          if (!currentPanicSafeDomains.includes(val)) {
+            currentPanicSafeDomains.push(val);
+            addedCount++;
+          }
+        } else {
+          if (!currentPanicDomains.includes(val)) {
+            currentPanicDomains.push(val);
+            addedCount++;
+          }
+        }
       }
     });
 
     if (addedCount > 0) {
-      await chrome.storage.local.set({ panicDomains: currentPanicDomains });
+      if (isWhitelist) {
+        await chrome.storage.local.set({ panicSafeDomains: currentPanicSafeDomains });
+      } else {
+        await chrome.storage.local.set({ panicDomains: currentPanicDomains });
+      }
       channel.postMessage({ action: 'update_meta' });
       renderPanicDomainsList(document.getElementById('panic-domain-filter')?.value || '');
     }
 
     const box = document.getElementById('panic-tab-capture-box');
     if (box) box.style.display = 'none';
+  });
+
+  document.getElementById('btn-panic-restore')?.addEventListener('click', async () => {
+    const res = await chrome.storage.local.get('lastPanicSession');
+    const session = res.lastPanicSession || [];
+    if (session.length === 0) {
+      alert('No panic session to restore.');
+      return;
+    }
+    
+    for (const tabInfo of session) {
+      await chrome.tabs.create({
+        url: tabInfo.url,
+        active: false
+      });
+    }
+
+    await chrome.storage.local.set({ lastPanicSession: [] });
+    initPanicMode();
+  });
+
+  document.getElementById('btn-configure-shortcuts')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+  });
+
+  document.getElementById('panic-type-select')?.addEventListener('change', async (e) => {
+    settings.panicType = e.target.value;
+    await saveSettings();
+    applyLayoutSettings();
+    renderPanicDomainsList(document.getElementById('panic-domain-filter')?.value || '');
+  });
+
+  document.getElementById('panic-method-select')?.addEventListener('change', async (e) => {
+    settings.panicMethod = e.target.value;
+    await saveSettings();
+  });
+
+  document.getElementById('panic-landing-input')?.addEventListener('input', async (e) => {
+    settings.panicLandingPage = e.target.value.trim() || 'dashboard.html';
+    await saveSettings();
+  });
+
+  document.getElementById('panic-autoclose-input')?.addEventListener('input', async (e) => {
+    let val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 1) val = 1;
+    if (val > 48) val = 48;
+    settings.panicAutoCloseHours = val;
+    await saveSettings();
   });
 }

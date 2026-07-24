@@ -114,7 +114,65 @@ body.density-tiny { --tile-size: 24px; --favicon-size: 16px; --grid-gap: 4px; }
   background: #cbd5e1; padding: 1px 5px; border-radius: 10px; font-size: 9px; color: #475569;
 }
 
-.scroll-area { overflow-y: auto; overflow-x: hidden; }
+.scroll-area {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 380px;
+}
+
+/* List View Styles */
+.tab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  width: 250px;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-item:hover {
+  background: #f1f5f9;
+  border-color: var(--primary);
+}
+
+.list-item.selected {
+  background: #eff6ff;
+  border-color: var(--primary);
+  border-width: 1.5px;
+}
+
+.list-item.active-tab {
+  background: #d1fae5 !important;
+  border-color: #059669 !important;
+}
+
+.list-item .favicon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.list-item .tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-grow: 1;
+}
 
 .grid-container {
   display: grid;

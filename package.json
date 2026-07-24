@@ -1,0 +1,15 @@
+{
+  "name": "lord-of-the-tabs",
+  "version": "1.0.0",
+  "description": "High-performance tab management with List/Grid views, IndexedDB history, and Google Sheets Backup.",
+  "main": "background.js",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "keywords": [
+    "chrome-extension",
+    "tab-manager"
+  ],
+  "author": "",
+  "license": "ISC"
+}

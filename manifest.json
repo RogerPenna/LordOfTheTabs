@@ -1,15 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Lord of the Tabs",
-  "version": "2.6",
+  "version": "1.0.0",
   "description": "High-performance tab management with List/Grid views, IndexedDB history, and Google Sheets Backup.",
   "permissions": [
     "tabs",
-    "windows",
     "activeTab",
     "storage",
     "identity",
-    "scripting",
     "history",
     "favicon",
     "alarms",
@@ -38,15 +36,15 @@
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "16": "logo_transparent.png",
-      "48": "logo_transparent.png",
-      "128": "logo_transparent.png"
+      "16": "icon-16.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
     }
   },
   "icons": {
-    "16": "logo_transparent.png",
-    "48": "logo_transparent.png",
-    "128": "logo_transparent.png"
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
   },
   "chrome_url_overrides": {
     "newtab": "dashboard.html"

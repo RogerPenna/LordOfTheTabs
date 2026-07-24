@@ -8,43 +8,111 @@ const DEFAULT_ADULT_DOMAINS = [
 
 // --- Panic Logic (Shared) ---
 async function executePanicClose() {
-  const [allTabs, windows, data] = await Promise.all([
+  const [allTabs, activeWindow, data] = await Promise.all([
     chrome.tabs.query({}),
-    chrome.windows.getAll({ windowTypes: ['normal'] }),
-    chrome.storage.local.get('panicDomains')
+    chrome.windows.getLastFocused({ populate: false }),
+    chrome.storage.local.get(['panicDomains', 'panicSafeDomains', 'popupSettings'])
   ]);
 
-  const adultDomains = data.panicDomains || DEFAULT_ADULT_DOMAINS;
+  const settings = data.popupSettings || {};
+  const panicType = settings.panicType || 'blacklist';     // 'blacklist' or 'whitelist'
+  const panicMethod = settings.panicMethod || 'tabSwap';    // 'tabSwap' or 'windowSwap'
+  const landingPage = settings.panicLandingPage || 'dashboard.html';
 
-  const adultTabs = allTabs.filter(tab => {
+  const blacklist = data.panicDomains || DEFAULT_ADULT_DOMAINS;
+  const whitelist = data.panicSafeDomains || [];
+
+  const isSystemUrl = (urlStr) => {
+    if (!urlStr) return true;
+    return urlStr.startsWith('chrome://') || 
+           urlStr.startsWith('chrome-extension://') || 
+           urlStr.startsWith('about:') || 
+           urlStr.startsWith('edge://');
+  };
+
+  const getDomain = (urlStr) => {
     try {
-      const host = new URL(tab.url).hostname.replace('www.', '').toLowerCase();
-      return adultDomains.some(domain => host.includes(domain.toLowerCase().trim()));
-    } catch(e) { return false; }
+      return new URL(urlStr).hostname.replace('www.', '').toLowerCase().trim();
+    } catch(e) { return ''; }
+  };
+
+  const tabsToClose = [];
+  const tabsToKeep = [];
+
+  allTabs.forEach(tab => {
+    if (isSystemUrl(tab.url)) {
+      tabsToKeep.push(tab);
+      return;
+    }
+
+    const domain = getDomain(tab.url);
+    if (panicType === 'blacklist') {
+      const isUnsafe = blacklist.some(d => domain.includes(d.toLowerCase().trim()));
+      if (isUnsafe) {
+        tabsToClose.push(tab);
+      } else {
+        tabsToKeep.push(tab);
+      }
+    } else {
+      const isSafe = whitelist.some(d => domain.includes(d.toLowerCase().trim()));
+      if (isSafe) {
+        tabsToKeep.push(tab);
+      } else {
+        tabsToClose.push(tab);
+      }
+    }
   });
 
-  // CRITICAL FIX: If no adult tabs, do NOTHING. Don't swap windows.
-  if (adultTabs.length === 0) {
-    console.log("Panic aborted: No targets found.");
+  if (tabsToClose.length === 0) {
+    console.log("Panic aborted: No target tabs to close.");
     return;
   }
 
-  const win1 = windows.sort((a, b) => a.id - b.id)[0];
-  const win1Tabs = allTabs.filter(t => t.windowId === win1.id);
-  const win1SafeTabs = win1Tabs.filter(t => !adultTabs.find(at => at.id === t.id));
+  const activeWinId = activeWindow ? activeWindow.id : null;
 
-  // Visual Swap
-  const newWin = await chrome.windows.create({ focused: true, state: 'maximized' });
-  
-  if (win1SafeTabs.length > 0) {
-    await chrome.tabs.move(win1SafeTabs.map(t => t.id), { windowId: newWin.id, index: -1 });
-    const defaultTab = (await chrome.tabs.query({ windowId: newWin.id }))[0];
-    if (defaultTab) chrome.tabs.remove(defaultTab.id);
+  const panicSession = tabsToClose.map(t => ({
+    url: t.url,
+    title: t.title || '',
+    favIconUrl: t.favIconUrl || ''
+  }));
+  await chrome.storage.local.set({ lastPanicSession: panicSession });
+
+  if (panicMethod === 'tabSwap') {
+    if (activeWinId) {
+      await chrome.tabs.create({
+        windowId: activeWinId,
+        url: landingPage,
+        active: true
+      });
+    } else {
+      await chrome.tabs.create({
+        url: landingPage,
+        active: true
+      });
+    }
+
+    await chrome.tabs.remove(tabsToClose.map(t => t.id));
+  } else {
+    const normalWindows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+    const win1 = normalWindows.sort((a, b) => a.id - b.id)[0] || activeWindow;
+
+    const newWin = await chrome.windows.create({ 
+      url: landingPage,
+      focused: true, 
+      state: 'maximized' 
+    });
+
+    const win1Tabs = allTabs.filter(t => t.windowId === win1.id);
+    const win1SafeTabs = win1Tabs.filter(t => tabsToKeep.find(kt => kt.id === t.id));
+
+    if (win1SafeTabs.length > 0) {
+      await chrome.tabs.move(win1SafeTabs.map(t => t.id), { windowId: newWin.id, index: -1 });
+    }
+
+    await chrome.tabs.move(tabsToClose.map(t => t.id), { windowId: win1.id, index: -1 });
+    await chrome.windows.update(win1.id, { state: 'minimized' });
+    await chrome.tabs.remove(tabsToClose.map(t => t.id));
   }
-
-  await chrome.tabs.move(adultTabs.map(t => t.id), { windowId: win1.id, index: -1 });
-  await chrome.windows.update(win1.id, { state: 'minimized' });
-  await chrome.tabs.remove(adultTabs.map(t => t.id));
 }
 
 // --- Tab Tracking & Metadata ---
@@ -201,16 +269,49 @@ async function autoArchiveTabs() {
     const windowMap = new Map();
     windows.forEach((win, idx) => windowMap.set(win.id, idx + 1));
 
-    const settingsData = await chrome.storage.local.get('popupSettings');
+    const [settingsData, data] = await Promise.all([
+      chrome.storage.local.get('popupSettings'),
+      chrome.storage.local.get(['panicDomains', 'panicSafeDomains'])
+    ]);
+
     const settings = settingsData.popupSettings || {};
+    const blacklist = data.panicDomains || DEFAULT_ADULT_DOMAINS;
+    const whitelist = data.panicSafeDomains || [];
+    const panicType = settings.panicType || 'blacklist';
+
     const archiveDays = settings.autoArchiveDays || 3;
     const archiveThresholdMs = archiveDays * 24 * 60 * 60 * 1000;
+
+    const panicAutoCloseHours = settings.panicAutoCloseHours || 24;
+    const panicThresholdMs = panicAutoCloseHours * 60 * 60 * 1000;
     const now = Date.now();
+
+    const getDomain = (urlStr) => {
+      try {
+        return new URL(urlStr).hostname.replace('www.', '').toLowerCase().trim();
+      } catch(e) { return ''; }
+    };
 
     for (const tab of tabs) {
       if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) continue;
+      
       const meta = await getTabMeta(tab.url);
-      if (now - meta.ultimo_acesso > archiveThresholdMs && meta.importancia < 4) {
+      const domain = getDomain(tab.url);
+      
+      let isPanicTab = false;
+      if (panicType === 'blacklist') {
+        isPanicTab = blacklist.some(d => domain.includes(d.toLowerCase().trim()));
+      } else {
+        const isSafe = whitelist.some(d => domain.includes(d.toLowerCase().trim()));
+        isPanicTab = !isSafe;
+      }
+
+      const threshold = isPanicTab ? panicThresholdMs : archiveThresholdMs;
+      const shouldArchive = isPanicTab 
+        ? (now - meta.ultimo_acesso > threshold)
+        : (now - meta.ultimo_acesso > threshold && meta.importancia < 4);
+
+      if (shouldArchive) {
         await archiveTab({
           url: tab.url,
           title: meta.customTitle || tab.title,

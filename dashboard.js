@@ -119,6 +119,7 @@ let activeWindowId = null;
 let currentView = 'table';
 let settings = {};
 let vaultGroupBy = 'date';
+let isVaultUnlocked = false;
 let lastVaultAccessTime = 0;
 let lastBackupTime = 0;
 
@@ -176,7 +177,7 @@ async function loadData() {
     getArchivedTabs(),
     getAllWorkspaces(),
     chrome.tabs.query({ active: true, lastFocusedWindow: true }),
-    chrome.storage.local.get('popupSettings'),
+    chrome.storage.local.get(['popupSettings', 'panicPin', 'panicDomains', 'panicSafeDomains']),
     new Promise((resolve) => {
       if (chrome.sessions && chrome.sessions.getRecentlyClosed) {
         chrome.sessions.getRecentlyClosed({ maxResults: 25 }, resolve);
@@ -188,6 +189,9 @@ async function loadData() {
   ]);
   
   settings = data.popupSettings || {};
+  settings.panicPin = data.panicPin || null;
+  settings.panicDomains = data.panicDomains || [];
+  settings.panicSafeDomains = data.panicSafeDomains || [];
   enableAffiliateSpeedDial = syncData.enableAffiliateSpeedDial !== false;
   
   const activeTab = activeTabs[0];
@@ -976,8 +980,78 @@ function createBarChart(data, color, unit = 'tabs') {
 function renderVault() {
   const tbody = document.getElementById('vault-table-body');
   if (!tbody) return;
-  tbody.innerHTML = archivedTabs.length ? '' : '<tr><td colspan="3" style="text-align:center; color:#64748b; padding:20px;">Vault is empty</td></tr>';
-  if (archivedTabs.length === 0) return;
+
+  const blacklist = settings.panicDomains || [];
+  const whitelist = settings.panicSafeDomains || [];
+  const panicType = settings.panicType || 'blacklist';
+
+  const isSystemUrl = (urlStr) => {
+    if (!urlStr) return true;
+    return urlStr.startsWith('chrome://') || 
+           urlStr.startsWith('chrome-extension://') || 
+           urlStr.startsWith('about:') || 
+           urlStr.startsWith('edge://');
+  };
+
+  const getDomain = (urlStr) => {
+    try {
+      return new URL(urlStr).hostname.replace('www.', '').toLowerCase().trim();
+    } catch(e) { return ''; }
+  };
+
+  const panicArchivedTabs = [];
+  const safeArchivedTabs = [];
+
+  archivedTabs.forEach(tab => {
+    if (isSystemUrl(tab.url)) {
+      safeArchivedTabs.push(tab);
+      return;
+    }
+    const domain = getDomain(tab.url);
+    let isPanic = false;
+    if (panicType === 'blacklist') {
+      isPanic = blacklist.some(d => domain.includes(d.toLowerCase().trim()));
+    } else {
+      const isSafe = whitelist.some(d => domain.includes(d.toLowerCase().trim()));
+      isPanic = !isSafe;
+    }
+
+    if (isPanic) {
+      panicArchivedTabs.push(tab);
+    } else {
+      safeArchivedTabs.push(tab);
+    }
+  });
+
+  const pinBanner = document.getElementById('vault-pin-banner');
+  if (pinBanner) {
+    if (panicArchivedTabs.length > 0 && !isVaultUnlocked) {
+      pinBanner.style.display = 'flex';
+      const pinMsg = document.getElementById('vault-pin-message');
+      if (pinMsg) pinMsg.innerText = `🔒 ${panicArchivedTabs.length} sensitive item(s) are hidden behind PIN.`;
+      
+      const unlockBtn = document.getElementById('btn-unlock-vault');
+      if (unlockBtn && !unlockBtn.dataset.listenerBound) {
+        unlockBtn.dataset.listenerBound = 'true';
+        unlockBtn.addEventListener('click', () => {
+          const inputPin = prompt('Enter your 4-digit Panic PIN to unlock sensitive items:');
+          if (inputPin === settings.panicPin) {
+            isVaultUnlocked = true;
+            renderVault();
+          } else {
+            alert('Incorrect PIN!');
+          }
+        });
+      }
+    } else {
+      pinBanner.style.display = 'none';
+    }
+  }
+
+  const activeArchivedTabs = isVaultUnlocked ? [...safeArchivedTabs, ...panicArchivedTabs] : safeArchivedTabs;
+
+  tbody.innerHTML = activeArchivedTabs.length ? '' : '<tr><td colspan="3" style="text-align:center; color:#64748b; padding:20px;">Vault is empty</td></tr>';
+  if (activeArchivedTabs.length === 0) return;
 
   const renderVaultRow = (rowContainer, tab) => {
     const tr = document.createElement('tr');
@@ -996,13 +1070,13 @@ function renderVault() {
   };
 
   if (vaultGroupBy === 'none') {
-    archivedTabs.forEach(tab => renderVaultRow(tbody, tab));
+    activeArchivedTabs.forEach(tab => renderVaultRow(tbody, tab));
   } else {
     const groups = {};
     const todayStr = new Date().toDateString();
     const yesterdayStr = new Date(Date.now() - 86400000).toDateString();
 
-    archivedTabs.forEach(tab => {
+    activeArchivedTabs.forEach(tab => {
       let key = 'Other';
       if (vaultGroupBy === 'date') {
         if (!tab.archivedAt) {

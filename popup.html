@@ -169,7 +169,7 @@
 
       <div class="setting-group" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
         <label style="font-weight: bold; color: var(--danger); display: flex; align-items: center; justify-content: space-between;">
-          <span>🚫 Panic Mode Domains</span>
+          <span id="panic-manager-title">🚫 Panic Mode Domains</span>
           <span id="panic-lock-status" style="font-size: 10px; font-weight: normal; color: #64748b;">🔒 Locked</span>
         </label>
 
@@ -188,6 +188,44 @@
 
         <!-- Unlocked Domain Manager Panel -->
         <div id="panic-manager-panel" style="display: none; margin-top: 10px;">
+          <!-- Panic Mode Configurations -->
+          <div style="display: flex; flex-direction: column; gap: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 10px; box-sizing: border-box;">
+            <div style="font-size: 11px; font-weight: bold; color: #475569; display: flex; align-items: center; gap: 4px;">🛠️ Configurations</div>
+            
+            <div style="display: flex; gap: 8px; width: 100%; box-sizing: border-box;">
+              <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+                <label for="panic-type-select" style="font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase;">Type</label>
+                <select id="panic-type-select" style="font-size: 11px; padding: 4px; border-radius: 4px; border: 1px solid var(--border); background: white;">
+                  <option value="blacklist">Blacklist</option>
+                  <option value="whitelist">Whitelist (Super)</option>
+                </select>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+                <label for="panic-method-select" style="font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase;">Method</label>
+                <select id="panic-method-select" style="font-size: 11px; padding: 4px; border-radius: 4px; border: 1px solid var(--border); background: white;">
+                  <option value="tabSwap">Tab Switch</option>
+                  <option value="windowSwap">Window Swap</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 4px; width: 100%; box-sizing: border-box;">
+              <label for="panic-landing-input" style="font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase;">Landing Page URL</label>
+              <input type="text" id="panic-landing-input" placeholder="e.g. dashboard.html" style="font-size: 11px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: white; box-sizing: border-box; width: 100%;">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 4px; width: 100%; box-sizing: border-box;">
+              <label for="panic-autoclose-input" style="font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase;">Auto-Close Inactive (1-48 Hours)</label>
+              <input type="number" id="panic-autoclose-input" min="1" max="48" placeholder="24" style="font-size: 11px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: white; box-sizing: border-box; width: 100%;">
+            </div>
+          </div>
+
+          <!-- Restore Panic Session Button -->
+          <button id="btn-panic-restore" class="primary" style="font-size: 11px; padding: 6px 10px; width: 100%; display: none; align-items: center; justify-content: center; gap: 4px; background: #16a34a; border: 1px solid #16a34a; color: white; border-radius: 4px; cursor: pointer; margin-bottom: 10px; font-weight: bold;">
+            <span>⚡ Restore Panic Session (0 tabs)</span>
+          </button>
+
           <!-- Controls Toolbar: Add manual, Filter, Capture -->
           <div style="display: flex; flex-direction: column; gap: 6px;">
             <div style="display: flex; gap: 6px;">
@@ -236,7 +274,12 @@
             <button id="btn-panic-change-pin" style="font-size: 10px; color: #2563eb; background: none; border: none; cursor: pointer; text-decoration: underline;">🔑 Change PIN</button>
             <button id="btn-panic-relock" style="font-size: 10px; color: #ef4444; background: none; border: none; cursor: pointer; text-decoration: underline;">Lock Settings</button>
           </div>
-          <small style="font-size: 10px; color: #64748b; display: block; margin-top: 6px;">Closed via Ctrl+Shift+Y. Active tab adds itself via Ctrl+Shift+U.</small>
+          <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px;">
+            <button id="btn-configure-shortcuts" class="secondary" style="font-size: 10px; padding: 4px 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px; border-radius: 4px; cursor: pointer;">
+              <span>⌨️ Configure Keyboard Shortcuts</span>
+            </button>
+            <small style="font-size: 10px; color: #64748b; display: block;">Default: Close via Ctrl+Shift+Y. Add & close active via Ctrl+Shift+U.</small>
+          </div>
         </div>
       </div>
     </div>
