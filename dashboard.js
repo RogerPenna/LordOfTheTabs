@@ -200,7 +200,7 @@ async function loadData() {
     activeWindowId = activeTab.windowId;
   }
 
-  archivedTabs = archived;
+  archivedTabs = archived.sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0));
   savedWorkspaces = workspaces;
   recentWindows = (recentSessions || []).filter(s => s.window);
   const windowMap = new Map();
@@ -1048,7 +1048,9 @@ function renderVault() {
     }
   }
 
-  const activeArchivedTabs = isVaultUnlocked ? [...safeArchivedTabs, ...panicArchivedTabs] : safeArchivedTabs;
+  const activeArchivedTabs = isVaultUnlocked 
+    ? [...safeArchivedTabs, ...panicArchivedTabs].sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0)) 
+    : safeArchivedTabs;
 
   tbody.innerHTML = activeArchivedTabs.length ? '' : '<tr><td colspan="3" style="text-align:center; color:#64748b; padding:20px;">Vault is empty</td></tr>';
   if (activeArchivedTabs.length === 0) return;
