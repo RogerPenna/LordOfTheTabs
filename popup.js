@@ -600,9 +600,36 @@ function setupEventListeners() {
     render();
   });
 
+  const updateMuteButtonState = async () => {
+    const btn = document.getElementById('btn-mute-all');
+    if (!btn) return;
+    const allTabs = await chrome.tabs.query({});
+    const anyMuted = allTabs.some(t => t.mutedInfo && t.mutedInfo.muted);
+    if (anyMuted) {
+      btn.textContent = '🔊';
+      btn.title = 'Unmute All Tabs';
+    } else {
+      btn.textContent = '🔇';
+      btn.title = 'Mute All Tabs';
+    }
+  };
+
+  updateMuteButtonState();
+
   document.getElementById('btn-mute-all')?.addEventListener('click', async () => {
-    const tabs = await chrome.tabs.query({ audible: true });
-    for (const t of tabs) { await chrome.tabs.update(t.id, { muted: true }); }
+    const allTabs = await chrome.tabs.query({});
+    const mutedTabs = allTabs.filter(t => t.mutedInfo && t.mutedInfo.muted);
+    if (mutedTabs.length > 0) {
+      for (const t of mutedTabs) {
+        await chrome.tabs.update(t.id, { muted: false });
+      }
+    } else {
+      const audibleTabs = allTabs.filter(t => t.audible);
+      for (const t of audibleTabs) {
+        await chrome.tabs.update(t.id, { muted: true });
+      }
+    }
+    await updateMuteButtonState();
   });
 
   const historyBtn = document.getElementById('btn-delete-history');
