@@ -70,12 +70,30 @@ async function executePanicClose() {
 
   const activeWinId = activeWindow ? activeWindow.id : null;
 
-  const panicSession = tabsToClose.map(t => ({
-    url: t.url,
-    title: t.title || '',
-    favIconUrl: t.favIconUrl || ''
+  const now = Date.now();
+  const normalWindows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+  const windowMap = new Map();
+  normalWindows.forEach((win, idx) => windowMap.set(win.id, idx + 1));
+
+  await Promise.all(tabsToClose.map(async (t) => {
+    try {
+      const meta = await getTabMeta(t.url);
+      await archiveTab({
+        url: t.url,
+        title: meta.customTitle || t.title || '',
+        favIconUrl: t.favIconUrl || '',
+        archivedAt: now,
+        windowIndex: windowMap.get(t.windowId) || '?',
+        tabIndex: t.index
+      });
+    } catch (e) {
+      console.error("Error archiving panic tab:", e);
+    }
   }));
-  await chrome.storage.local.set({ lastPanicSession: panicSession });
+
+  const channel = new BroadcastChannel('tab_sync');
+  channel.postMessage({ action: 'update_meta' });
+  channel.close();
 
   if (panicMethod === 'tabSwap') {
     if (activeWinId) {

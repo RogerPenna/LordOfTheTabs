@@ -535,6 +535,8 @@ function setupEventListeners() {
       }
     });
   });
+
+
 }
 
 function setupViewNavigation() {
@@ -979,7 +981,8 @@ function createBarChart(data, color, unit = 'tabs') {
 
 function renderVault() {
   const tbody = document.getElementById('vault-table-body');
-  if (!tbody) return;
+  const panicTbody = document.getElementById('panic-vault-table-body');
+  if (!tbody || !panicTbody) return;
 
   const blacklist = settings.panicDomains || [];
   const whitelist = settings.panicSafeDomains || [];
@@ -1023,37 +1026,70 @@ function renderVault() {
     }
   });
 
+  // Handle Pin Lock/Unlock Banner
   const pinBanner = document.getElementById('vault-pin-banner');
   if (pinBanner) {
-    if (panicArchivedTabs.length > 0 && !isVaultUnlocked) {
+    if (panicArchivedTabs.length > 0) {
       pinBanner.style.display = 'flex';
       const pinMsg = document.getElementById('vault-pin-message');
-      if (pinMsg) pinMsg.innerText = `🔒 ${panicArchivedTabs.length} sensitive item(s) are hidden behind PIN.`;
-      
       const unlockBtn = document.getElementById('btn-unlock-vault');
+      
+      if (!isVaultUnlocked) {
+        if (pinMsg) pinMsg.innerText = `🔒 ${panicArchivedTabs.length} sensitive item(s) are hidden behind PIN.`;
+        if (unlockBtn) {
+          unlockBtn.innerText = 'Unlock Vault';
+          unlockBtn.style.background = '#d97706';
+          unlockBtn.style.borderColor = '#d97706';
+        }
+        document.getElementById('panic-vault-section').style.display = 'none';
+      } else {
+        if (pinMsg) pinMsg.innerText = `🔓 Vault unlocked. Sensitive items are visible below.`;
+        if (unlockBtn) {
+          unlockBtn.innerText = 'Lock Vault';
+          unlockBtn.style.background = '#ef4444';
+          unlockBtn.style.borderColor = '#ef4444';
+        }
+        document.getElementById('panic-vault-section').style.display = 'block';
+      }
+
       if (unlockBtn && !unlockBtn.dataset.listenerBound) {
         unlockBtn.dataset.listenerBound = 'true';
         unlockBtn.addEventListener('click', () => {
-          const inputPin = prompt('Enter your 4-digit Panic PIN to unlock sensitive items:');
-          if (inputPin === settings.panicPin) {
-            isVaultUnlocked = true;
-            renderVault();
+          if (!isVaultUnlocked) {
+            const inputPin = prompt('Enter your 4-digit Panic PIN to unlock sensitive items:');
+            if (inputPin === settings.panicPin) {
+              isVaultUnlocked = true;
+              renderVault();
+            } else {
+              alert('Incorrect PIN!');
+            }
           } else {
-            alert('Incorrect PIN!');
+            isVaultUnlocked = false;
+            renderVault();
           }
         });
       }
     } else {
       pinBanner.style.display = 'none';
+      document.getElementById('panic-vault-section').style.display = 'none';
     }
   }
 
-  const activeArchivedTabs = isVaultUnlocked 
-    ? [...safeArchivedTabs, ...panicArchivedTabs].sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0)) 
-    : safeArchivedTabs;
-
-  tbody.innerHTML = activeArchivedTabs.length ? '' : '<tr><td colspan="3" style="text-align:center; color:#64748b; padding:20px;">Vault is empty</td></tr>';
-  if (activeArchivedTabs.length === 0) return;
+  // Restore All Panic Tabs Button Listener
+  const restoreAllPanicBtn = document.getElementById('btn-restore-all-panic');
+  if (restoreAllPanicBtn && !restoreAllPanicBtn.dataset.listenerBound) {
+    restoreAllPanicBtn.dataset.listenerBound = 'true';
+    restoreAllPanicBtn.addEventListener('click', async () => {
+      if (confirm(`Restore all ${panicArchivedTabs.length} panic-closed tabs?`)) {
+        for (const tab of panicArchivedTabs) {
+          await chrome.tabs.create({ url: tab.url, active: false });
+          await deleteArchivedTab(tab.url);
+        }
+        await loadData();
+        render();
+      }
+    });
+  }
 
   const renderVaultRow = (rowContainer, tab) => {
     const tr = document.createElement('tr');
@@ -1071,85 +1107,95 @@ function renderVault() {
     rowContainer.appendChild(tr);
   };
 
-  if (vaultGroupBy === 'none') {
-    activeArchivedTabs.forEach(tab => renderVaultRow(tbody, tab));
-  } else {
-    const groups = {};
-    const todayStr = new Date().toDateString();
-    const yesterdayStr = new Date(Date.now() - 86400000).toDateString();
+  const populateTable = (tbodyElement, listToRender) => {
+    tbodyElement.innerHTML = listToRender.length ? '' : '<tr><td colspan="3" style="text-align:center; color:#64748b; padding:20px;">Section is empty</td></tr>';
+    if (listToRender.length === 0) return;
 
-    activeArchivedTabs.forEach(tab => {
-      let key = 'Other';
-      if (vaultGroupBy === 'date') {
-        if (!tab.archivedAt) {
-          key = 'Unknown Date';
-        } else {
-          const d = new Date(tab.archivedAt);
-          const dStr = d.toDateString();
-          if (dStr === todayStr) key = 'Today';
-          else if (dStr === yesterdayStr) key = 'Yesterday';
-          else key = d.toLocaleDateString();
-        }
-      } else if (vaultGroupBy === 'title') {
-        const char = (tab.title || 'Untitled').trim().charAt(0).toUpperCase();
-        key = /[A-Z]/.test(char) ? char : '#';
-      } else if (vaultGroupBy === 'domain') {
-        try {
-          key = new URL(tab.url).hostname.replace(/^www\d*\./, '').replace(/^m\./, '');
-        } catch(e) {
-          key = tab.url || 'Other';
-        }
-      } else if (vaultGroupBy === 'url') {
-        key = tab.url;
-      } else if (vaultGroupBy === 'window') {
-        key = tab.windowIndex ? `Window ${tab.windowIndex}` : 'Unknown Window';
-      }
-      
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(tab);
-    });
-
-    let sortedKeys = Object.keys(groups);
-    if (vaultGroupBy === 'date') {
-      sortedKeys.sort((a, b) => {
-        if (a === 'Today') return -1;
-        if (b === 'Today') return 1;
-        if (a === 'Yesterday') return -1;
-        if (b === 'Yesterday') return 1;
-        if (a === 'Unknown Date') return 1;
-        if (b === 'Unknown Date') return -1;
-        return new Date(b) - new Date(a);
-      });
+    if (vaultGroupBy === 'none') {
+      listToRender.forEach(tab => renderVaultRow(tbodyElement, tab));
     } else {
-      sortedKeys.sort((a, b) => a.localeCompare(b));
-    }
+      const groups = {};
+      const todayStr = new Date().toDateString();
+      const yesterdayStr = new Date(Date.now() - 86400000).toDateString();
 
-    for (const key of sortedKeys) {
-      const headerTr = document.createElement('tr');
-      headerTr.className = 'group-header';
-      headerTr.innerHTML = `
-        <td colspan="3" style="font-weight: bold; padding: 6px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #475569;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span>${key} (${groups[key].length})</span>
-            <button class="primary btn-restore-vault-group" style="padding: 3px 8px; font-size: 10px; font-weight: 600; cursor: pointer; border-radius: 4px; border: 1px solid #2563eb;">Restore Group</button>
-          </div>
-        </td>
-      `;
-      headerTr.querySelector('.btn-restore-vault-group').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const tabsToRestore = groups[key];
-        if (confirm(`Restore all ${tabsToRestore.length} tabs in this group?`)) {
-          for (const tab of tabsToRestore) {
-            await chrome.tabs.create({ url: tab.url, active: false });
-            await deleteArchivedTab(tab.url);
+      listToRender.forEach(tab => {
+        let key = 'Other';
+        if (vaultGroupBy === 'date') {
+          if (!tab.archivedAt) {
+            key = 'Unknown Date';
+          } else {
+            const d = new Date(tab.archivedAt);
+            const dStr = d.toDateString();
+            if (dStr === todayStr) key = 'Today';
+            else if (dStr === yesterdayStr) key = 'Yesterday';
+            else key = d.toLocaleDateString();
           }
-          await loadData();
-          render();
+        } else if (vaultGroupBy === 'title') {
+          const char = (tab.title || 'Untitled').trim().charAt(0).toUpperCase();
+          key = /[A-Z]/.test(char) ? char : '#';
+        } else if (vaultGroupBy === 'domain') {
+          try {
+            key = new URL(tab.url).hostname.replace(/^www\d*\./, '').replace(/^m\./, '');
+          } catch(e) {
+            key = tab.url || 'Other';
+          }
+        } else if (vaultGroupBy === 'url') {
+          key = tab.url;
+        } else if (vaultGroupBy === 'window') {
+          key = tab.windowIndex ? `Window ${tab.windowIndex}` : 'Unknown Window';
         }
+        
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(tab);
       });
-      tbody.appendChild(headerTr);
-      groups[key].forEach(tab => renderVaultRow(tbody, tab));
+
+      let sortedKeys = Object.keys(groups);
+      if (vaultGroupBy === 'date') {
+        sortedKeys.sort((a, b) => {
+          if (a === 'Today') return -1;
+          if (b === 'Today') return 1;
+          if (a === 'Yesterday') return -1;
+          if (b === 'Yesterday') return 1;
+          if (a === 'Unknown Date') return 1;
+          if (b === 'Unknown Date') return -1;
+          return new Date(b) - new Date(a);
+        });
+      } else {
+        sortedKeys.sort((a, b) => a.localeCompare(b));
+      }
+
+      for (const key of sortedKeys) {
+        const headerTr = document.createElement('tr');
+        headerTr.className = 'group-header';
+        headerTr.innerHTML = `
+          <td colspan="3" style="font-weight: bold; padding: 6px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; color: #475569;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span>${key} (${groups[key].length})</span>
+              <button class="primary btn-restore-vault-group" style="padding: 3px 8px; font-size: 10px; font-weight: 600; cursor: pointer; border-radius: 4px; border: 1px solid #2563eb;">Restore Group</button>
+            </div>
+          </td>
+        `;
+        headerTr.querySelector('.btn-restore-vault-group').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const tabsToRestore = groups[key];
+          if (confirm(`Restore all ${tabsToRestore.length} tabs in this group?`)) {
+            for (const tab of tabsToRestore) {
+              await chrome.tabs.create({ url: tab.url, active: false });
+              await deleteArchivedTab(tab.url);
+            }
+            await loadData();
+            render();
+          }
+        });
+        tbodyElement.appendChild(headerTr);
+        groups[key].forEach(tab => renderVaultRow(tbodyElement, tab));
+      }
     }
+  };
+
+  populateTable(tbody, safeArchivedTabs);
+  if (isVaultUnlocked) {
+    populateTable(panicTbody, panicArchivedTabs);
   }
 }
 
@@ -1345,3 +1391,5 @@ async function triggerBackupDownload() {
   const alertEl = document.getElementById('backup-alert-badge');
   if (alertEl) alertEl.style.display = 'none';
 }
+
+

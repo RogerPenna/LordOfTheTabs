@@ -29,6 +29,7 @@
     </div>
   </div>
 
+
   <div id="google-search-section" class="google-search-section" style="display: none;">
     <form id="google-search-form" class="google-search-form">
       <span class="search-icon">🔍</span>
@@ -229,19 +230,45 @@
       <span id="vault-pin-message">🔒 Some items are hidden behind PIN.</span>
       <button id="btn-unlock-vault" class="primary" style="padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 4px; border: 1px solid #d97706; background: #d97706; color: white;">Unlock Vault</button>
     </div>
-    <div class="table-container">
-      <table class="dashboard-table">
-        <thead>
-          <tr class="sort-row">
-            <th>Title</th>
-            <th>URL</th>
-            <th style="width: 100px; text-align: center;">Action</th>
-          </tr>
-        </thead>
-        <tbody id="vault-table-body">
-          <!-- Vault items populated by JS -->
-        </tbody>
-      </table>
+    <!-- Regular Vault Section -->
+    <div id="regular-vault-section">
+      <div id="regular-vault-title" style="margin-top: 16px; margin-bottom: 8px; font-weight: bold; font-size: 14px; color: #475569;">📋 Regular Archived Tabs (Inactive)</div>
+      <div class="table-container">
+        <table class="dashboard-table">
+          <thead>
+            <tr class="sort-row">
+              <th>Title</th>
+              <th>URL</th>
+              <th style="width: 100px; text-align: center;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="vault-table-body">
+            <!-- Vault items populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Panic Vault Section (Only visible when unlocked) -->
+    <div id="panic-vault-section" style="display: none; margin-top: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <div style="font-weight: bold; font-size: 14px; color: var(--danger); display: flex; align-items: center; gap: 6px;">🚫 Panic-Closed Tabs (Sensitive)</div>
+        <button id="btn-restore-all-panic" class="primary" style="padding: 4px 10px; font-size: 11px; cursor: pointer; border-radius: 4px; background: #ef4444; border: 1px solid #ef4444; color: white;">Restore All Panic Tabs</button>
+      </div>
+      <div class="table-container">
+        <table class="dashboard-table" style="border: 1px solid #fee2e2;">
+          <thead>
+            <tr class="sort-row" style="background: #fef2f2;">
+              <th>Title</th>
+              <th>URL</th>
+              <th style="width: 100px; text-align: center;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="panic-vault-table-body">
+            <!-- Panic archived tabs populated by JS -->
+          </tbody>
+        </table>
+      </div>
     </div>
     
     <div class="vault-section-title" style="margin-top: 32px; margin-bottom: 12px; font-weight: bold; font-size: 16px; color: #1e293b; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px; text-align: left;">

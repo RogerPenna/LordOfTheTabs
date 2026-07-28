@@ -708,19 +708,6 @@ async function initPanicMode() {
     if (managerPanel) managerPanel.style.display = 'block';
     if (lockStatus) lockStatus.innerText = '🔓 Unlocked';
     renderPanicDomainsList();
-    
-    chrome.storage.local.get('lastPanicSession', (res) => {
-      const session = res.lastPanicSession || [];
-      const restoreBtn = document.getElementById('btn-panic-restore');
-      if (restoreBtn) {
-        if (session.length > 0) {
-          restoreBtn.style.display = 'flex';
-          restoreBtn.querySelector('span').innerText = `⚡ Restore Panic Session (${session.length} tabs)`;
-        } else {
-          restoreBtn.style.display = 'none';
-        }
-      }
-    });
     return;
   }
 
@@ -966,24 +953,7 @@ function setupPanicModeListeners() {
     if (box) box.style.display = 'none';
   });
 
-  document.getElementById('btn-panic-restore')?.addEventListener('click', async () => {
-    const res = await chrome.storage.local.get('lastPanicSession');
-    const session = res.lastPanicSession || [];
-    if (session.length === 0) {
-      alert('No panic session to restore.');
-      return;
-    }
-    
-    for (const tabInfo of session) {
-      await chrome.tabs.create({
-        url: tabInfo.url,
-        active: false
-      });
-    }
 
-    await chrome.storage.local.set({ lastPanicSession: [] });
-    initPanicMode();
-  });
 
   document.getElementById('btn-configure-shortcuts')?.addEventListener('click', () => {
     chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
