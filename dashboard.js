@@ -628,8 +628,7 @@ function getProcessedData() {
     if (filters.url === '') {
       urlMatch = true;
     } else if (filters.exactUrl) {
-      const scope = settings.ghostScope || 'domain';
-      urlMatch = matchGhost(tab.url, filters.url, scope) || tab.url.toLowerCase() === filters.url.toLowerCase();
+      urlMatch = normalize(tab.url) === normalizedQuery;
     } else {
       urlMatch = tab.url.toLowerCase().includes(filters.url);
     }
