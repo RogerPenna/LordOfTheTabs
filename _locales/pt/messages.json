@@ -1,0 +1,122 @@
+{
+  "appName": {
+    "message": "Senhor das Abas"
+  },
+  "appDesc": {
+    "message": "Gerenciamento de abas de alto desempenho com visualizações em Lista/Grade, histórico IndexedDB e Backup no Google Planilhas."
+  },
+  "searchPlaceholder": {
+    "message": "Buscar por Título ou URL..."
+  },
+  "exactLabel": {
+    "message": "Exato"
+  },
+  "muteAllTabs": {
+    "message": "Mudar/Ativar Som de Todas as Abas"
+  },
+  "listGridToggle": {
+    "message": "Alternar Lista/Grade"
+  },
+  "settingsLabel": {
+    "message": "Configurações"
+  },
+  "openDashboard": {
+    "message": "Abrir Painel"
+  },
+  "helpDoc": {
+    "message": "Ajuda e Documentação"
+  },
+  "helpBtnLabel": {
+    "message": "Ajuda"
+  },
+  "moveBtn": {
+    "message": "Mover"
+  },
+  "clearHistBtn": {
+    "message": "Limpar Hist"
+  },
+  "discardBtn": {
+    "message": "Descartar"
+  },
+  "closeBtn": {
+    "message": "Fechar"
+  },
+  "proActivationTitle": {
+    "message": "🔑 Ativação da Licença Pro"
+  },
+  "licenseKeyPlaceholder": {
+    "message": "Insira a Chave da Licença (LOTT-PRO-...)"
+  },
+  "activateBtn": {
+    "message": "Ativar"
+  },
+  "devToggleBtn": {
+    "message": "Alternar Grátis/Pro"
+  },
+  "backupSettingsTitle": {
+    "message": "💾 Configurações de Backup"
+  },
+  "panicModeDomainsTitle": {
+    "message": "🚫 Domínios do Modo Pânico"
+  },
+  "proFeatureLock": {
+    "message": "🔒 Recurso Pro"
+  },
+  "regularVaultTitle": {
+    "message": "📋 Abas Arquivadas Regulares (Inativas)"
+  },
+  "panicVaultTitle": {
+    "message": "🚫 Abas Fechadas por Pânico (Confidenciais)"
+  },
+  "restoreAllPanicBtn": {
+    "message": "Restaurar Todas as Abas do Pânico"
+  },
+  "tabCountBadge": {
+    "message": "Abas"
+  },
+  "backupOverdueBadge": {
+    "message": "⚠️ Backup Atrasado!"
+  },
+  "tableTab": {
+    "message": "📋 Tabela"
+  },
+  "chartsTab": {
+    "message": "📊 Gráficos"
+  },
+  "vaultTab": {
+    "message": "🗄️ Cofre"
+  },
+  "workspacesTab": {
+    "message": "📂 Áreas de Trabalho"
+  },
+  "refreshBtn": {
+    "message": "↻ Atualizar"
+  },
+  "exportCsvBtn": {
+    "message": "Exportar CSV"
+  },
+  "backupBtn": {
+    "message": "Backup"
+  },
+  "restoreBtn": {
+    "message": "Restaurar"
+  },
+  "googleSearchPlaceholder": {
+    "message": "Pesquisar no Google ou digite uma URL..."
+  },
+  "searchBtn": {
+    "message": "Pesquisar"
+  },
+  "vaultLockBannerText": {
+    "message": "🔒 Alguns itens estão ocultos por PIN."
+  },
+  "unlockVaultBtn": {
+    "message": "Desbloquear Cofre"
+  },
+  "coffeeSupportTitle": {
+    "message": "Apoie o Senhor das Abas"
+  },
+  "coffeeSupportText": {
+    "message": "Gostando do Senhor das Abas? Considere apoiar o desenvolvimento independente com um café!"
+  }
+}

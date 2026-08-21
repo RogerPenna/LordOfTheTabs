@@ -1,4 +1,6 @@
 import { getTabMeta, saveTabMeta } from './storage.js';
+import { translatePage, getMessage } from './i18n.js';
+import { checkPremium, activatePro, toggleDevPro } from './licensing.js';
 
 let allWindows = [];
 let currentView = 'grid'; 
@@ -46,9 +48,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.close();
     return;
   }
+  translatePage();
   await refreshState();
   render();
   setupEventListeners();
+  await updateLicensingUI();
   if (settings.startupFocus !== false) {
     document.getElementById('search')?.focus();
   }
@@ -982,5 +986,73 @@ function setupPanicModeListeners() {
     if (val > 48) val = 48;
     settings.panicAutoCloseHours = val;
     await saveSettings();
+  });
+
+  document.getElementById('btn-pro-activate')?.addEventListener('click', async () => {
+    const input = document.getElementById('pro-license-input');
+    const key = input ? input.value : '';
+    const success = await activatePro(key);
+    if (success) {
+      alert(getMessage('activationSuccess') || 'Pro Activation Successful!');
+      if (input) input.value = '';
+      await updateLicensingUI();
+      render();
+    } else {
+      alert(getMessage('activationFailed') || 'Invalid license key format.');
+    }
+  });
+
+  document.getElementById('btn-pro-dev-toggle')?.addEventListener('click', async () => {
+    const nextState = await toggleDevPro();
+    alert(`Testing Mode: Switched to ${nextState ? 'PRO' : 'FREE'} tier.`);
+    await updateLicensingUI();
+    render();
+  });
+}
+
+async function updateLicensingUI() {
+  const isPro = await checkPremium();
+  const proBadge = document.getElementById('pro-badge');
+  const lockLabels = document.querySelectorAll('.pro-lock-label');
+  
+  if (proBadge) {
+    if (isPro) {
+      proBadge.textContent = 'Pro';
+      proBadge.style.background = '#dcfce7';
+      proBadge.style.color = '#15803d';
+    } else {
+      proBadge.textContent = 'Free';
+      proBadge.style.background = '#e2e8f0';
+      proBadge.style.color = '#475569';
+    }
+  }
+
+  lockLabels.forEach(el => {
+    el.style.display = isPro ? 'none' : 'inline';
+  });
+
+  const premiumInputs = [
+    'auto-archive-days',
+    'backup-interval-days',
+    'backup-mode',
+    'panic-type-select',
+    'panic-method-select',
+    'panic-landing-input',
+    'panic-autoclose-input',
+    'btn-panic-capture-tabs'
+  ];
+
+  premiumInputs.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.disabled = !isPro;
+      if (!isPro) {
+        el.style.opacity = '0.6';
+        el.style.cursor = 'not-allowed';
+      } else {
+        el.style.opacity = '1';
+        el.style.cursor = '';
+      }
+    }
   });
 }

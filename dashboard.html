@@ -9,23 +9,31 @@
   <div class="header">
     <div class="title-area">
       <img src="logo_transparent.png" alt="Logo" style="height: 32px; width: auto;">
-      <h1>Lord of the Tabs</h1>
-      <span id="tab-count" class="badge">0 Tabs</span>
-      <span id="backup-alert-badge" class="badge" style="background: #ef4444; color: white; display: none; cursor: pointer;" title="Your backup is overdue! Click to download backup now.">⚠️ Backup Overdue!</span>
+      <h1 data-i18n="appName">Lord of the Tabs</h1>
+      <span id="tab-count" class="badge">0 <span data-i18n="tabCountBadge">Tabs</span></span>
+      <span id="backup-alert-badge" class="badge" style="background: #ef4444; color: white; display: none; cursor: pointer;" title="Your backup is overdue! Click to download backup now." data-i18n="backupOverdueBadge">⚠️ Backup Overdue!</span>
     </div>
     <div class="view-nav">
-      <button id="btn-view-table" class="nav-btn active">📋 Table</button>
-      <button id="btn-view-charts" class="nav-btn">📊 Charts</button>
-      <button id="btn-view-vault" class="nav-btn">🗄️ Vault</button>
-      <button id="btn-view-workspaces" class="nav-btn">📂 Saved Workspaces</button>
+      <button id="btn-view-table" class="nav-btn active" data-i18n="tableTab">📋 Table</button>
+      <button id="btn-view-charts" class="nav-btn" data-i18n="chartsTab">📊 Charts</button>
+      <button id="btn-view-vault" class="nav-btn" data-i18n="vaultTab">🗄️ Vault</button>
+      <button id="btn-view-workspaces" class="nav-btn" data-i18n="workspacesTab">📂 Saved Workspaces</button>
     </div>
-    <div class="global-actions">
-      <button id="btn-refresh" class="secondary">↻ Refresh</button>
-      <button id="btn-export-csv" class="secondary">Export CSV</button>
-      <button id="btn-backup" class="primary" title="Export all settings and data to JSON">Backup</button>
-      <button id="btn-restore" class="secondary" title="Import database from JSON backup file">Restore</button>
+    <div class="global-actions" style="display: flex; align-items: center; gap: 6px;">
+      <button id="btn-refresh" class="secondary" data-i18n="refreshBtn">↻ Refresh</button>
+      <button id="btn-export-csv" class="secondary" data-i18n="exportCsvBtn">Export CSV</button>
+      <button id="btn-backup" class="primary" title="Export all settings and data to JSON" data-i18n="backupBtn">Backup</button>
+      <button id="btn-restore" class="secondary" title="Import database from JSON backup file" data-i18n="restoreBtn">Restore</button>
       <input type="file" id="backup-file-input" style="display: none;" accept=".json">
-      <button id="btn-help" class="secondary" title="Help & Documentation">❓ Help</button>
+      <button id="btn-help" class="secondary" title="Help & Documentation">❓ <span data-i18n="helpBtnLabel">Help</span></button>
+      
+      <!-- Pro Licensing Header Area -->
+      <div class="pro-header-area" style="display: flex; align-items: center; gap: 6px; border-left: 1px solid var(--border); padding-left: 10px; margin-left: 6px;">
+        <span id="dashboard-pro-badge" style="font-size: 10px; font-weight: bold; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px;">Free</span>
+        <input type="text" id="dashboard-license-input" placeholder="LOTT-PRO-..." data-i18n="licenseKeyPlaceholder" style="font-size: 11px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; width: 100px; box-sizing: border-box;">
+        <button id="btn-dashboard-activate" class="primary" style="font-size: 11px; padding: 4px 8px; cursor: pointer; border-radius: 4px;" data-i18n="activateBtn">Activate</button>
+        <button id="btn-dashboard-dev-toggle" class="secondary" style="font-size: 11px; padding: 4px 8px; cursor: pointer; border-radius: 4px;" data-i18n="devToggleBtn">Toggle Free/Pro</button>
+      </div>
     </div>
   </div>
 
@@ -189,7 +197,16 @@
     </div>
   </div>
 
-  <div id="charts-view" class="view-content" style="display: none;">
+  <div id="charts-view" class="view-content" style="display: none; position: relative;">
+    <!-- Pro Lock Overlay -->
+    <div id="charts-pro-lock" style="display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.9); z-index: 10; align-items: center; justify-content: center; flex-direction: column; text-align: center; backdrop-filter: blur(4px);">
+      <div style="background: white; padding: 32px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 400px; border: 1px solid #e2e8f0; box-sizing: border-box; width: 90%;">
+        <span style="font-size: 48px;">📊</span>
+        <h3 style="margin-top: 16px; margin-bottom: 8px; font-size: 20px; font-weight: bold; color: #1e293b;" data-i18n="chartsTab">Charts View</h3>
+        <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Unlock detailed visual analytics, domain distributions, and RAM consumption breakdowns per window.</p>
+        <div style="font-weight: bold; color: #d97706; font-size: 13px;" data-i18n="proFeatureLock">🔒 Pro Feature</div>
+      </div>
+    </div>
     <div id="charts-nav" style="display: none; align-items: center; gap: 15px; margin-bottom: 20px; background: white; padding: 12px 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
       <button id="btn-charts-back" class="secondary" style="padding: 4px 12px; font-size: 12px;">← Back</button>
       <span id="charts-path" style="font-weight: 600; color: #475569; font-size: 14px;">Overview</span>

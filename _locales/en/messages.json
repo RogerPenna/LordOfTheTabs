@@ -1,0 +1,122 @@
+{
+  "appName": {
+    "message": "Lord of the Tabs"
+  },
+  "appDesc": {
+    "message": "High-performance tab management with List/Grid views, IndexedDB history, and Google Sheets Backup."
+  },
+  "searchPlaceholder": {
+    "message": "Search by Title or URL..."
+  },
+  "exactLabel": {
+    "message": "Exact"
+  },
+  "muteAllTabs": {
+    "message": "Mute/Unmute All Tabs"
+  },
+  "listGridToggle": {
+    "message": "List/Grid Toggle"
+  },
+  "settingsLabel": {
+    "message": "Settings"
+  },
+  "openDashboard": {
+    "message": "Open Dashboard"
+  },
+  "helpDoc": {
+    "message": "Help & Documentation"
+  },
+  "helpBtnLabel": {
+    "message": "Help"
+  },
+  "moveBtn": {
+    "message": "Move"
+  },
+  "clearHistBtn": {
+    "message": "Clear Hist"
+  },
+  "discardBtn": {
+    "message": "Discard"
+  },
+  "closeBtn": {
+    "message": "Close"
+  },
+  "proActivationTitle": {
+    "message": "🔑 Pro License Activation"
+  },
+  "licenseKeyPlaceholder": {
+    "message": "Enter License Key (LOTT-PRO-...)"
+  },
+  "activateBtn": {
+    "message": "Activate"
+  },
+  "devToggleBtn": {
+    "message": "Toggle Free/Pro"
+  },
+  "backupSettingsTitle": {
+    "message": "💾 Backup Settings"
+  },
+  "panicModeDomainsTitle": {
+    "message": "🚫 Panic Mode Domains"
+  },
+  "proFeatureLock": {
+    "message": "🔒 Pro Feature"
+  },
+  "regularVaultTitle": {
+    "message": "📋 Regular Archived Tabs (Inactive)"
+  },
+  "panicVaultTitle": {
+    "message": "🚫 Panic-Closed Tabs (Sensitive)"
+  },
+  "restoreAllPanicBtn": {
+    "message": "Restore All Panic Tabs"
+  },
+  "tabCountBadge": {
+    "message": "Tabs"
+  },
+  "backupOverdueBadge": {
+    "message": "⚠️ Backup Overdue!"
+  },
+  "tableTab": {
+    "message": "📋 Table"
+  },
+  "chartsTab": {
+    "message": "📊 Charts"
+  },
+  "vaultTab": {
+    "message": "🗄️ Vault"
+  },
+  "workspacesTab": {
+    "message": "📂 Saved Workspaces"
+  },
+  "refreshBtn": {
+    "message": "↻ Refresh"
+  },
+  "exportCsvBtn": {
+    "message": "Export CSV"
+  },
+  "backupBtn": {
+    "message": "Backup"
+  },
+  "restoreBtn": {
+    "message": "Restore"
+  },
+  "googleSearchPlaceholder": {
+    "message": "Search Google or type a URL..."
+  },
+  "searchBtn": {
+    "message": "Search"
+  },
+  "vaultLockBannerText": {
+    "message": "🔒 Some items are hidden behind PIN."
+  },
+  "unlockVaultBtn": {
+    "message": "Unlock Vault"
+  },
+  "coffeeSupportTitle": {
+    "message": "Support Lord of the Tabs"
+  },
+  "coffeeSupportText": {
+    "message": "Enjoying Lord of the Tabs? Consider supporting independent development with a coffee!"
+  }
+}

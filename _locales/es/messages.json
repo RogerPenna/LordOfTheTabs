@@ -1,0 +1,122 @@
+{
+  "appName": {
+    "message": "Señor de las Pestañas"
+  },
+  "appDesc": {
+    "message": "Gestión de pestañas de alto rendimiento con vistas de Lista/Cuadrícula, historial IndexedDB y copia de seguridad en Google Sheets."
+  },
+  "searchPlaceholder": {
+    "message": "Buscar por Título o URL..."
+  },
+  "exactLabel": {
+    "message": "Exacto"
+  },
+  "muteAllTabs": {
+    "message": "Silenciar/Activar Sonido de Todas las Pestañas"
+  },
+  "listGridToggle": {
+    "message": "Alternar Lista/Cuadrícula"
+  },
+  "settingsLabel": {
+    "message": "Configuración"
+  },
+  "openDashboard": {
+    "message": "Abrir Panel"
+  },
+  "helpDoc": {
+    "message": "Ayuda y Documentación"
+  },
+  "helpBtnLabel": {
+    "message": "Ayuda"
+  },
+  "moveBtn": {
+    "message": "Mover"
+  },
+  "clearHistBtn": {
+    "message": "Limpiar Hist"
+  },
+  "discardBtn": {
+    "message": "Descartar"
+  },
+  "closeBtn": {
+    "message": "Cerrar"
+  },
+  "proActivationTitle": {
+    "message": "🔑 Activación de Licencia Pro"
+  },
+  "licenseKeyPlaceholder": {
+    "message": "Ingrese la Clave de Licencia (LOTT-PRO-...)"
+  },
+  "activateBtn": {
+    "message": "Activar"
+  },
+  "devToggleBtn": {
+    "message": "Alternar Gratis/Pro"
+  },
+  "backupSettingsTitle": {
+    "message": "💾 Configuración de Copia de Seguridad"
+  },
+  "panicModeDomainsTitle": {
+    "message": "🚫 Dominios del Modo Pánico"
+  },
+  "proFeatureLock": {
+    "message": "🔒 Función Pro"
+  },
+  "regularVaultTitle": {
+    "message": "📋 Pestañas Archivadas Regulares (Inactivas)"
+  },
+  "panicVaultTitle": {
+    "message": "🚫 Pestañas Cerradas por Pánico (Confidenciales)"
+  },
+  "restoreAllPanicBtn": {
+    "message": "Restaurar Todas las Pestañas del Pánico"
+  },
+  "tabCountBadge": {
+    "message": "Pestañas"
+  },
+  "backupOverdueBadge": {
+    "message": "⚠️ ¡Copia de Seguridad Atrasada!"
+  },
+  "tableTab": {
+    "message": "📋 Tabla"
+  },
+  "chartsTab": {
+    "message": "📊 Gráficos"
+  },
+  "vaultTab": {
+    "message": "🗄️ Bóveda"
+  },
+  "workspacesTab": {
+    "message": "📂 Espacios de Trabajo"
+  },
+  "refreshBtn": {
+    "message": "↻ Actualizar"
+  },
+  "exportCsvBtn": {
+    "message": "Exportar CSV"
+  },
+  "backupBtn": {
+    "message": "Copia de Seguridad"
+  },
+  "restoreBtn": {
+    "message": "Restaurar"
+  },
+  "googleSearchPlaceholder": {
+    "message": "Buscar en Google o escribir una URL..."
+  },
+  "searchBtn": {
+    "message": "Buscar"
+  },
+  "vaultLockBannerText": {
+    "message": "🔒 Algunos elementos están ocultos por PIN."
+  },
+  "unlockVaultBtn": {
+    "message": "Desbloquear Bóveda"
+  },
+  "coffeeSupportTitle": {
+    "message": "Apoye al Señor de las Pestañas"
+  },
+  "coffeeSupportText": {
+    "message": "¿Disfrutando del Señor de las Pestañas? ¡Considere apoyar el desarrollo independiente con un café!"
+  }
+}

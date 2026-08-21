@@ -3,6 +3,8 @@ import {
   deleteArchivedTab, saveWorkspace, getAllWorkspaces, 
   deleteWorkspace, exportAllData, importAllData 
 } from './storage.js';
+import { translatePage, getMessage } from './i18n.js';
+import { checkPremium, activatePro, toggleDevPro } from './licensing.js';
 
 const channel = new BroadcastChannel('tab_sync');
 let allTabs = [];
@@ -139,10 +141,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   lastBackupTime = data.lastBackupTime || 0;
 
+  translatePage();
   await loadData();
   setupEventListeners();
   setupViewNavigation();
   render();
+  await updateLicensingUI();
 
   // Check backup interval status
   const backupInterval = settings.backupIntervalDays || 7;
@@ -303,6 +307,11 @@ function setupEventListeners() {
   });
 
   document.getElementById('btn-merge-duplicates').addEventListener('click', async () => {
+    const isPro = await checkPremium();
+    if (!isPro) {
+      alert('🔒 Pro Feature: Upgrade to Pro to merge duplicate tabs.');
+      return;
+    }
     const urlGroups = {};
     const dashboardUrl = chrome.runtime.getURL('');
 
@@ -450,6 +459,13 @@ function setupEventListeners() {
 
   document.getElementById('btn-bundle-selected')?.addEventListener('click', async () => {
     if (selectedIds.size === 0) return;
+    
+    const isPro = await checkPremium();
+    if (!isPro && savedWorkspaces.length >= 2) {
+      alert('🔒 Pro Feature: Upgrade to Pro to save unlimited workspaces (Free tier limit is 2).');
+      return;
+    }
+
     const name = prompt("Enter a name for this workspace:");
     if (!name) return;
     
@@ -536,7 +552,26 @@ function setupEventListeners() {
     });
   });
 
+  document.getElementById('btn-dashboard-activate')?.addEventListener('click', async () => {
+    const input = document.getElementById('dashboard-license-input');
+    const key = input ? input.value : '';
+    const success = await activatePro(key);
+    if (success) {
+      alert(getMessage('activationSuccess') || 'Pro Activation Successful!');
+      if (input) input.value = '';
+      await updateLicensingUI();
+      render();
+    } else {
+      alert(getMessage('activationFailed') || 'Invalid license key format.');
+    }
+  });
 
+  document.getElementById('btn-dashboard-dev-toggle')?.addEventListener('click', async () => {
+    const nextState = await toggleDevPro();
+    alert(`Testing Mode: Switched to ${nextState ? 'PRO' : 'FREE'} tier.`);
+    await updateLicensingUI();
+    render();
+  });
 }
 
 function setupViewNavigation() {
@@ -1390,6 +1425,44 @@ async function triggerBackupDownload() {
   
   const alertEl = document.getElementById('backup-alert-badge');
   if (alertEl) alertEl.style.display = 'none';
+}
+
+async function updateLicensingUI() {
+  const isPro = await checkPremium();
+  const proBadge = document.getElementById('dashboard-pro-badge');
+  const chartsProLock = document.getElementById('charts-pro-lock');
+
+  if (proBadge) {
+    if (isPro) {
+      proBadge.textContent = 'Pro';
+      proBadge.style.background = '#dcfce7';
+      proBadge.style.color = '#15803d';
+    } else {
+      proBadge.textContent = 'Free';
+      proBadge.style.background = '#e2e8f0';
+      proBadge.style.color = '#475569';
+    }
+  }
+
+  if (chartsProLock) {
+    chartsProLock.style.display = isPro ? 'none' : 'flex';
+  }
+
+  const exportBtn = document.getElementById('btn-export-csv');
+  if (exportBtn) {
+    exportBtn.style.opacity = isPro ? '1' : '0.6';
+    // Let's also attach a premium lock blocker to the click handler if not pro
+    if (!exportBtn.dataset.listenerBound) {
+      exportBtn.dataset.listenerBound = 'true';
+      exportBtn.addEventListener('click', async (e) => {
+        const isCurrentlyPro = await checkPremium();
+        if (!isCurrentlyPro) {
+          e.stopImmediatePropagation();
+          alert('🔒 Pro Feature: Upgrade to Pro to export CSV.');
+        }
+      });
+    }
+  }
 }
 
 

@@ -1,4 +1,5 @@
 import { getTabMeta, saveTabMeta, archiveTab, cleanupOldMeta } from './storage.js';
+import { checkPremium } from './licensing.js';
 
 const DEFAULT_ADULT_DOMAINS = [
   'pornhub.com', 'xvideos.com', 'xnxx.com', 'xhamster.com', 'youporn.com', 
@@ -213,6 +214,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
 
       if (request.action === 'backupToSheets') {
+        const isPro = await checkPremium();
+        if (!isPro) {
+          return { status: "error", error: "Pro license required for Sheets backup." };
+        }
         const url = await pushToSheets(request.data);
         return { status: "success", url };
       }
