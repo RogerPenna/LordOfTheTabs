@@ -26,7 +26,8 @@ let settings = {
   panicType: 'blacklist',
   panicMethod: 'tabSwap',
   panicLandingPage: 'dashboard.html',
-  panicAutoCloseHours: 24
+  panicAutoCloseHours: 24,
+  autoPurgeSensitiveHistory: true
 };
 
 const channel = new BroadcastChannel('tab_sync');
@@ -123,6 +124,9 @@ function applyLayoutSettings() {
   const dashboardAsNewtabToggle = document.getElementById('dashboard_as_newtab');
   if (dashboardAsNewtabToggle) dashboardAsNewtabToggle.checked = settings.setDashboardAsNewTab !== false;
 
+  const showQuickLaunchToggle = document.getElementById('show_quick_launch');
+  if (showQuickLaunchToggle) showQuickLaunchToggle.checked = settings.showQuickLaunch !== false;
+
   const autoArchiveDaysInput = document.getElementById('auto-archive-days');
   if (autoArchiveDaysInput) {
     autoArchiveDaysInput.value = settings.autoArchiveDays || 3;
@@ -180,6 +184,11 @@ function applyLayoutSettings() {
       ? '✅ Whitelisted Safe Domains' 
       : '🚫 Blacklisted Unsafe Domains';
   }
+
+  const autoPurgeToggle = document.getElementById('auto-purge-sensitive-history-toggle');
+  if (autoPurgeToggle) {
+    autoPurgeToggle.checked = settings.autoPurgeSensitiveHistory !== false;
+  }
 }
 
 channel.onmessage = (msg) => {
@@ -233,7 +242,7 @@ function render(skipAutoFit = false) {
   const query = document.getElementById('search').value.toLowerCase().trim();
   const starFilter = parseInt(document.getElementById('star-filter')?.value || '0');
   
-  const normalize = (u) => u.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+  const normalize = (u) => u.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
   const normalizedQuery = normalize(query);
 
   allWindows.forEach((win, index) => {
@@ -476,6 +485,11 @@ function setupEventListeners() {
     saveSettings();
   });
 
+  document.getElementById('show_quick_launch')?.addEventListener('change', (e) => {
+    settings.showQuickLaunch = e.target.checked;
+    saveSettings();
+  });
+
   document.getElementById('primary_click_action')?.addEventListener('change', (e) => {
     settings.primaryAction = e.target.value;
     saveSettings();
@@ -680,7 +694,9 @@ function setupEventListeners() {
 let currentPanicDomains = [...DEFAULT_ADULT_DOMAINS];
 let currentPanicSafeDomains = [];
 let currentPanicPin = null;
+let currentPanicEmergencyPin = null;
 let isPanicUnlocked = false;
+let isPanicEmergencyDecoy = false;
 
 function cleanDomain(input) {
   if (!input) return '';
@@ -694,10 +710,23 @@ function cleanDomain(input) {
 }
 
 async function initPanicMode() {
-  const data = await chrome.storage.local.get(['panicPin', 'panicDomains', 'panicSafeDomains']);
+  const data = await chrome.storage.local.get(['panicPin', 'panicEmergencyPin', 'panicDomains', 'panicSafeDomains']);
   currentPanicPin = data.panicPin || null;
+  currentPanicEmergencyPin = data.panicEmergencyPin || null;
   currentPanicDomains = data.panicDomains || [...DEFAULT_ADULT_DOMAINS];
   currentPanicSafeDomains = data.panicSafeDomains || [];
+
+  const isPro = await checkPremium();
+  const emergencyStatus = document.getElementById('emergency-pin-status');
+  if (emergencyStatus) {
+    if (currentPanicEmergencyPin) {
+      emergencyStatus.textContent = '✓ Código de emergência ativo.';
+      emergencyStatus.style.color = '#15803d';
+    } else {
+      emergencyStatus.textContent = isPro ? 'Nenhum código configurado.' : 'Disponível apenas no plano Pro.';
+      emergencyStatus.style.color = '#854d0e';
+    }
+  }
 
   const pinBox = document.getElementById('panic-pin-box');
   const managerPanel = document.getElementById('panic-manager-panel');
@@ -711,6 +740,10 @@ async function initPanicMode() {
     if (pinBox) pinBox.style.display = 'none';
     if (managerPanel) managerPanel.style.display = 'block';
     if (lockStatus) lockStatus.innerText = '🔓 Unlocked';
+    const decoySec = document.getElementById('panic-decoy-pin-section');
+    if (decoySec) decoySec.style.display = isPanicEmergencyDecoy ? 'none' : 'block';
+    const autoPurgeSec = document.getElementById('panic-auto-purge-section');
+    if (autoPurgeSec) autoPurgeSec.style.display = isPanicEmergencyDecoy ? 'none' : 'block';
     renderPanicDomainsList();
     return;
   }
@@ -735,6 +768,11 @@ async function initPanicMode() {
 function renderPanicDomainsList(filterQuery = '') {
   const container = document.getElementById('panic-domains-list');
   if (!container) return;
+
+  if (isPanicEmergencyDecoy) {
+    container.innerHTML = '<div style="font-size: 11px; color: #94a3b8; text-align: center; padding: 12px; font-style: italic;">Nenhum domínio configurado (0 domínios).</div>';
+    return;
+  }
   
   const query = filterQuery.trim().toLowerCase();
   const isWhitelist = settings.panicType === 'whitelist';
@@ -770,10 +808,16 @@ function renderPanicDomainsList(filterQuery = '') {
 }
 
 function setupPanicModeListeners() {
-  document.getElementById('btn-panic-unlock')?.addEventListener('click', () => {
+  document.getElementById('btn-panic-unlock')?.addEventListener('click', async () => {
     const pin = document.getElementById('panic-pin-input')?.value?.trim();
+    const isPro = await checkPremium();
     if (pin === currentPanicPin) {
       isPanicUnlocked = true;
+      isPanicEmergencyDecoy = false;
+      initPanicMode();
+    } else if (isPro && currentPanicEmergencyPin && pin === currentPanicEmergencyPin) {
+      isPanicUnlocked = true;
+      isPanicEmergencyDecoy = true;
       initPanicMode();
     } else {
       alert('Incorrect PIN! Please try again.');
@@ -804,7 +848,47 @@ function setupPanicModeListeners() {
 
   document.getElementById('btn-panic-relock')?.addEventListener('click', () => {
     isPanicUnlocked = false;
+    isPanicEmergencyDecoy = false;
     initPanicMode();
+  });
+
+  document.getElementById('btn-panic-save-emergency-pin')?.addEventListener('click', async () => {
+    const isPro = await checkPremium();
+    if (!isPro) {
+      alert('🔒 Recurso Pro: Ative uma licença Pro para usar o Código de Emergência.');
+      return;
+    }
+    const val = document.getElementById('panic-emergency-pin-input')?.value?.trim();
+    if (!val || val.length !== 4 || isNaN(val)) {
+      alert('Por favor digite um PIN numérico de 4 dígitos.');
+      return;
+    }
+    if (val === currentPanicPin) {
+      alert('O Código de Emergência não pode ser igual ao PIN real!');
+      return;
+    }
+    await chrome.storage.local.set({ panicEmergencyPin: val });
+    currentPanicEmergencyPin = val;
+    const input = document.getElementById('panic-emergency-pin-input');
+    if (input) input.value = '';
+    const status = document.getElementById('emergency-pin-status');
+    if (status) {
+      status.textContent = '✓ Código de emergência ativo.';
+      status.style.color = '#15803d';
+    }
+    alert('Código de Emergência salvo! Ao digitar esse PIN no Vault ou nas Configurações, o sistema fingirá estar destrancado com 0 itens.');
+  });
+
+  document.getElementById('btn-panic-remove-emergency-pin')?.addEventListener('click', async () => {
+    await chrome.storage.local.remove('panicEmergencyPin');
+    currentPanicEmergencyPin = null;
+    const input = document.getElementById('panic-emergency-pin-input');
+    if (input) input.value = '';
+    const status = document.getElementById('emergency-pin-status');
+    if (status) {
+      status.textContent = 'Código de emergência removido.';
+      status.style.color = '#854d0e';
+    }
   });
 
   document.getElementById('btn-panic-change-pin')?.addEventListener('click', () => {
@@ -985,6 +1069,17 @@ function setupPanicModeListeners() {
     if (isNaN(val) || val < 1) val = 1;
     if (val > 48) val = 48;
     settings.panicAutoCloseHours = val;
+    await saveSettings();
+  });
+
+  document.getElementById('auto-purge-sensitive-history-toggle')?.addEventListener('change', async (e) => {
+    const isPro = await checkPremium();
+    if (!isPro) {
+      alert('🔒 Recurso Pro: Ative uma licença Pro para usar o Auto-Purge de Histórico Sensível.');
+      e.target.checked = false;
+      return;
+    }
+    settings.autoPurgeSensitiveHistory = e.target.checked;
     await saveSettings();
   });
 

@@ -1,4 +1,4 @@
-import { getTabMeta, saveTabMeta, archiveTab, cleanupOldMeta } from './storage.js';
+import { getTabMeta, saveTabMeta, archiveTab, cleanupOldMeta, saveSensitiveHistory } from './storage.js';
 import { checkPremium } from './licensing.js';
 
 const DEFAULT_ADULT_DOMAINS = [
@@ -6,6 +6,65 @@ const DEFAULT_ADULT_DOMAINS = [
   'redtube.com', 'onlyfans.com', 'chaturbate.com', 'bongacams.com', 
   'livejasmin.com', 'stripchat.com', 'cam4.com', 'xhamster live'
 ];
+
+// Open side panel on extension icon click
+chrome.sidePanel
+  ?.setPanelBehavior({ openPanelOnActionClick: true })
+  ?.catch((error) => console.error("SidePanel setup error:", error));
+
+// Auto-Purge Sensitive History from Chrome to Protected Vault (Pro)
+chrome.history.onVisited.addListener(async (item) => {
+  try {
+    const isPro = await checkPremium();
+    if (!isPro) return;
+
+    const [settingsData, data] = await Promise.all([
+      chrome.storage.local.get('popupSettings'),
+      chrome.storage.local.get(['panicDomains', 'panicSafeDomains'])
+    ]);
+    const settings = settingsData.popupSettings || {};
+    if (settings.autoPurgeSensitiveHistory === false) return;
+
+    const blacklist = data.panicDomains || DEFAULT_ADULT_DOMAINS;
+    const whitelist = data.panicSafeDomains || [];
+    const panicType = settings.panicType || 'blacklist';
+
+    const urlStr = item.url;
+    if (!urlStr || urlStr.startsWith('chrome') || urlStr.startsWith('about') || urlStr.startsWith('edge')) return;
+
+    let domain = '';
+    try {
+      domain = new URL(urlStr).hostname.replace(/^www\./, '').toLowerCase().trim();
+    } catch(e) { return; }
+
+    let isSensitive = false;
+    if (panicType === 'blacklist') {
+      isSensitive = blacklist.some(d => domain.includes(d.toLowerCase().trim()));
+    } else {
+      isSensitive = !whitelist.some(d => domain.includes(d.toLowerCase().trim()));
+    }
+
+    if (isSensitive) {
+      // 1. Delete from Chrome history immediately (clears omnibox autocomplete & chrome://history)
+      await chrome.history.deleteUrl({ url: urlStr });
+
+      // 2. Save in protected internal storage
+      await saveSensitiveHistory({
+        url: urlStr,
+        title: item.title || domain,
+        visitTime: item.lastVisitTime || Date.now(),
+        domain: domain
+      });
+
+      // 3. Notify dashboard
+      const channel = new BroadcastChannel('tab_sync');
+      channel.postMessage({ action: 'sensitive_history_updated' });
+      channel.close();
+    }
+  } catch (err) {
+    console.error('Auto-purge history error:', err);
+  }
+});
 
 // --- Panic Logic (Shared) ---
 async function executePanicClose() {

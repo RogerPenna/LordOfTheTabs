@@ -45,23 +45,40 @@ const fallbackStrings = {
 };
 
 export function getMessage(key) {
+  if (!key) return '';
+  const cleanKey = key.replace(/^\[[a-zA-Z0-9_-]+\]/, '');
   if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-    return chrome.i18n.getMessage(key) || fallbackStrings[key] || key;
+    return chrome.i18n.getMessage(cleanKey) || fallbackStrings[cleanKey] || cleanKey;
   }
-  return fallbackStrings[key] || key;
+  return fallbackStrings[cleanKey] || cleanKey;
 }
 
 export function translatePage() {
   const elements = document.querySelectorAll('[data-i18n]');
   elements.forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    const msg = getMessage(key);
-    if (!msg) return;
+    const rawAttr = el.getAttribute('data-i18n');
+    if (!rawAttr) return;
 
-    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-      el.placeholder = msg;
-    } else {
-      el.textContent = msg;
+    const directives = rawAttr.split(';').map(d => d.trim()).filter(Boolean);
+    for (const directive of directives) {
+      const attrMatch = directive.match(/^\[([a-zA-Z0-9_-]+)\](.*)$/);
+      if (attrMatch) {
+        const targetAttr = attrMatch[1];
+        const key = attrMatch[2];
+        const msg = getMessage(key);
+        if (msg) {
+          el.setAttribute(targetAttr, msg);
+        }
+      } else {
+        const msg = getMessage(directive);
+        if (!msg) continue;
+
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+          el.placeholder = msg;
+        } else {
+          el.textContent = msg;
+        }
+      }
     }
   });
 }

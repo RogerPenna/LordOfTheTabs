@@ -135,6 +135,13 @@
         <small style="font-size: 10px; color: #64748b;">Every time you open a new tab, the Dashboard will appear.</small>
       </div>
 
+      <div class="setting-group" style="padding-top: 8px;">
+        <label style="display: flex; align-items: center; gap: 6px; font-weight: bold;">
+          <input type="checkbox" id="show_quick_launch"> 🚀 Quick Launch Sites in New Tab
+        </label>
+        <small style="font-size: 10px; color: #64748b;">Show shortcuts (Google, ChatGPT, etc.) below the search bar in the Dashboard.</small>
+      </div>
+
       <div class="setting-group" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px; position: relative;">
         <label for="auto-archive-days" style="font-weight: bold; color: var(--primary);">
           ⏳ Auto-Archive Idle Tabs <span class="pro-lock-label" style="font-size: 9px; color: #d97706; font-weight: bold; display: none;">(🔒 Pro)</span>
@@ -288,6 +295,38 @@
             <button id="btn-panic-change-pin" style="font-size: 10px; color: #2563eb; background: none; border: none; cursor: pointer; text-decoration: underline;">🔑 Change PIN</button>
             <button id="btn-panic-relock" style="font-size: 10px; color: #ef4444; background: none; border: none; cursor: pointer; text-decoration: underline;">Lock Settings</button>
           </div>
+
+          <!-- Emergency Decoy PIN (Pro Feature) -->
+          <div id="panic-decoy-pin-section" style="margin-top: 10px; padding: 8px 10px; background: #fefce8; border: 1px solid #fef08a; border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 11px; font-weight: bold; color: #854d0e;">🚨 Decoy PIN (Código de Emergência)</span>
+              <span class="pro-badge-tag" style="font-size: 9px; font-weight: bold; background: #fde047; color: #713f12; padding: 1px 5px; border-radius: 3px;">🔒 Pro</span>
+            </div>
+            <p style="font-size: 10px; color: #713f12; margin: 0 0 6px 0; line-height: 1.3;">
+              Se for forçado a abrir o Vault, digite este PIN para simular o cofre destrancado com <strong>0 itens</strong>.
+            </p>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <input type="password" id="panic-emergency-pin-input" maxlength="4" placeholder="••••" style="width: 70px; padding: 3px 6px; font-size: 12px; text-align: center; font-family: monospace; border: 1px solid #ca8a04; border-radius: 4px; box-sizing: border-box;">
+              <button id="btn-panic-save-emergency-pin" class="primary" style="font-size: 10px; padding: 4px 8px; background: #eab308; border: 1px solid #ca8a04; color: #422006; font-weight: 600; cursor: pointer; border-radius: 4px;">Salvar</button>
+              <button id="btn-panic-remove-emergency-pin" style="font-size: 10px; color: #ef4444; background: none; border: none; cursor: pointer; text-decoration: underline;">Remover</button>
+            </div>
+            <span id="emergency-pin-status" style="font-size: 10px; color: #15803d; display: block; margin-top: 4px; font-weight: 500;"></span>
+          </div>
+
+          <!-- Auto-Purge Sensitive History (Pro Feature) -->
+          <div id="panic-auto-purge-section" style="margin-top: 10px; padding: 8px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label style="display: flex; align-items: center; gap: 6px; font-weight: bold; font-size: 11px; color: #1e293b; cursor: pointer;">
+                <input type="checkbox" id="auto-purge-sensitive-history-toggle">
+                <span>🕵️ Auto-Purge Histórico Sensível</span>
+              </label>
+              <span class="pro-badge-tag" style="font-size: 9px; font-weight: bold; background: #fef08a; color: #713f12; padding: 1px 5px; border-radius: 3px;">🔒 Pro</span>
+            </div>
+            <p style="font-size: 10px; color: #64748b; margin: 0; line-height: 1.3;">
+              Remove visitas a sites da blacklist do histórico e autocomplete do Chrome instantaneamente, salvando em segredo no Vault protegido por PIN.
+            </p>
+          </div>
+
           <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px;">
             <button id="btn-configure-shortcuts" class="secondary" style="font-size: 10px; padding: 4px 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 4px; border-radius: 4px; cursor: pointer;">
               <span>⌨️ Configure Keyboard Shortcuts</span>

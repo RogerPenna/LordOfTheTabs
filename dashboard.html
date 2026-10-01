@@ -47,22 +47,19 @@
   </div>
 
   <div id="speed-dial-section" class="speed-dial-section" style="display: none;">
-    <div class="speed-dial-grid">
-      <div class="speed-dial-card" id="sd-amazon">
+    <div class="speed-dial-grid" id="speed-dial-grid">
+      <div class="speed-dial-card" id="sd-amazon" title="Amazon - Compras apoiam o Lord of the Tabs">
         <img src="https://www.google.com/s2/favicons?domain=amazon.com.br&sz=32" class="sd-icon" alt="Amazon">
         <span class="sd-name">Amazon Brasil</span>
       </div>
-      <div class="speed-dial-card" id="sd-mercadolivre">
-        <img src="https://www.google.com/s2/favicons?domain=mercadolivre.com.br&sz=32" class="sd-icon" alt="Mercado Livre">
-        <span class="sd-name">Mercado Livre</span>
-      </div>
-      <div class="speed-dial-card" id="sd-aliexpress">
-        <img src="https://www.google.com/s2/favicons?domain=aliexpress.com&sz=32" class="sd-icon" alt="AliExpress">
-        <span class="sd-name">AliExpress</span>
+      <div id="speed-dial-custom-items" style="display: contents;"></div>
+      <div class="speed-dial-card speed-dial-add-card" id="btn-quick-launch-manage" title="Configurar sites de início (Add/Manage)">
+        <span style="font-size: 14px;">➕</span>
+        <span class="sd-name" style="color: #64748b;">Adicionar</span>
       </div>
     </div>
     <div class="speed-dial-disclosure">
-      Purchase using our shortcuts to support Lord of the Tabs at no additional cost.
+      Compras via Amazon apoiam o Lord of the Tabs sem custo adicional.
     </div>
   </div>
 
@@ -269,7 +266,7 @@
     <!-- Panic Vault Section (Only visible when unlocked) -->
     <div id="panic-vault-section" style="display: none; margin-top: 24px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <div style="font-weight: bold; font-size: 14px; color: var(--danger); display: flex; align-items: center; gap: 6px;">🚫 Panic-Closed Tabs (Sensitive)</div>
+        <div id="panic-vault-title-text" style="font-weight: bold; font-size: 14px; color: var(--danger); display: flex; align-items: center; gap: 6px;">🚫 Panic-Closed Tabs (Sensitive)</div>
         <button id="btn-restore-all-panic" class="primary" style="padding: 4px 10px; font-size: 11px; cursor: pointer; border-radius: 4px; background: #ef4444; border: 1px solid #ef4444; color: white;">Restore All Panic Tabs</button>
       </div>
       <div class="table-container">
@@ -286,6 +283,31 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Sensitive Browsing History (Auto-Purged from Chrome) -->
+      <div id="sensitive-history-section" style="margin-top: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div id="sensitive-history-title-text" style="font-weight: bold; font-size: 13px; color: #854d0e; display: flex; align-items: center; gap: 6px;">
+            🕵️ Sensitive Browsing History (Auto-Purged from Chrome) <span style="font-size: 9px; font-weight: bold; background: #fef08a; color: #713f12; padding: 1px 5px; border-radius: 3px;">🔒 Pro</span>
+          </div>
+          <button id="btn-clear-sensitive-history" class="secondary" style="padding: 3px 8px; font-size: 11px; cursor: pointer; border-radius: 4px; color: #dc2626; border-color: #fca5a5;">Limpar Histórico</button>
+        </div>
+        <div class="table-container">
+          <table class="dashboard-table" style="border: 1px solid #fef08a;">
+            <thead>
+              <tr class="sort-row" style="background: #fefce8;">
+                <th>Title</th>
+                <th>URL</th>
+                <th style="width: 140px;">Visited</th>
+                <th style="width: 100px; text-align: center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="sensitive-history-table-body">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
     
     <div class="vault-section-title" style="margin-top: 32px; margin-bottom: 12px; font-weight: bold; font-size: 16px; color: #1e293b; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px; text-align: left;">
@@ -301,6 +323,41 @@
       <!-- Workspaces will be rendered here as cards -->
     </div>
   </div>
+
+  <!-- Quick Launch Settings Modal -->
+  <div id="quick-launch-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <div style="font-weight: 700; font-size: 14px; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+          <span>🚀</span> Sites de Início (Nova Aba)
+        </div>
+        <button id="modal-ql-close" class="modal-close-icon" title="Fechar">&times;</button>
+      </div>
+      
+      <div class="modal-card-body">
+        <p style="font-size: 12px; color: #64748b; margin-top: 0; margin-bottom: 12px; line-height: 1.4;">
+          Clique em um botão na nova aba para navegar imediatamente ao site (ex: Google). Adicione ou remova seus atalhos abaixo:
+        </p>
+
+        <div id="modal-ql-list" class="modal-ql-list"></div>
+
+        <div class="modal-ql-add-box">
+          <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 6px;">Adicionar Novo Site:</div>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="modal-ql-name" placeholder="Nome (ex: Google)" style="width: 120px; padding: 6px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;">
+            <input type="text" id="modal-ql-url" placeholder="URL (ex: google.com)" style="flex: 1; padding: 6px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;">
+            <button id="modal-ql-add-btn" class="primary" style="padding: 6px 12px; font-size: 12px; white-space: nowrap; border-radius: 6px; cursor: pointer;">+ Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-card-footer">
+        <button id="modal-ql-reset" class="secondary" style="font-size: 11px; padding: 4px 8px; cursor: pointer;">Restaurar Padrões</button>
+        <button id="modal-ql-done" class="primary" style="font-size: 12px; padding: 6px 16px; border-radius: 6px; cursor: pointer;">Concluído</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="dashboard.js"></script>
 </body>
 </html>

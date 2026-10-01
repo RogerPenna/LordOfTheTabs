@@ -1,7 +1,8 @@
 import { 
   getTabMeta, saveTabMeta, getArchivedTabs, 
   deleteArchivedTab, saveWorkspace, getAllWorkspaces, 
-  deleteWorkspace, exportAllData, importAllData 
+  deleteWorkspace, exportAllData, importAllData,
+  getSensitiveHistory, deleteSensitiveHistoryItem, clearSensitiveHistory
 } from './storage.js';
 import { translatePage, getMessage } from './i18n.js';
 import { checkPremium, activatePro, toggleDevPro } from './licensing.js';
@@ -9,6 +10,7 @@ import { checkPremium, activatePro, toggleDevPro } from './licensing.js';
 const channel = new BroadcastChannel('tab_sync');
 let allTabs = [];
 let archivedTabs = [];
+let sensitiveHistoryItems = [];
 let savedWorkspaces = [];
 let recentWindows = [];
 const AFFILIATE_CONFIG = {
@@ -85,6 +87,195 @@ function setupGoogleSearchForm() {
   });
 }
 
+const DEFAULT_QUICK_LAUNCH = [
+  { id: 'google', name: 'Google', url: 'https://www.google.com' },
+  { id: 'chatgpt', name: 'ChatGPT', url: 'https://chatgpt.com' },
+  { id: 'youtube', name: 'YouTube', url: 'https://www.youtube.com' }
+];
+
+function renderQuickLaunch() {
+  const container = document.getElementById('speed-dial-custom-items');
+  if (!container) return;
+
+  const sites = (settings.quickLaunchSites && settings.quickLaunchSites.length > 0)
+    ? settings.quickLaunchSites
+    : DEFAULT_QUICK_LAUNCH;
+
+  container.innerHTML = '';
+  sites.forEach(site => {
+    let hostname = '';
+    try {
+      hostname = new URL(site.url).hostname;
+    } catch (e) {
+      hostname = site.url;
+    }
+    const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+
+    const card = document.createElement('div');
+    card.className = 'speed-dial-card';
+    card.title = `${site.name} (${site.url}) - Clique para abrir`;
+
+    const icon = document.createElement('img');
+    icon.src = faviconUrl;
+    icon.className = 'sd-icon';
+    icon.alt = site.name;
+    icon.onerror = () => { icon.style.display = 'none'; };
+
+    const label = document.createElement('span');
+    label.className = 'sd-name';
+    label.textContent = site.name;
+
+    card.appendChild(icon);
+    card.appendChild(label);
+
+    card.addEventListener('click', (e) => {
+      if (e.ctrlKey || e.metaKey || e.button === 1) {
+        chrome.tabs.create({ url: site.url });
+      } else {
+        window.location.href = site.url;
+      }
+    });
+
+    container.appendChild(card);
+  });
+}
+
+function setupQuickLaunchModal() {
+  const modal = document.getElementById('quick-launch-modal');
+  const manageBtn = document.getElementById('btn-quick-launch-manage');
+  const closeBtn = document.getElementById('modal-ql-close');
+  const doneBtn = document.getElementById('modal-ql-done');
+  const resetBtn = document.getElementById('modal-ql-reset');
+  const addBtn = document.getElementById('modal-ql-add-btn');
+  const nameInput = document.getElementById('modal-ql-name');
+  const urlInput = document.getElementById('modal-ql-url');
+  const listContainer = document.getElementById('modal-ql-list');
+
+  if (!modal || modal.dataset.initialized) return;
+  modal.dataset.initialized = 'true';
+
+  const openModal = () => {
+    renderModalList();
+    modal.style.display = 'flex';
+    nameInput?.focus();
+  };
+
+  const closeModal = () => {
+    modal.style.display = 'none';
+  };
+
+  manageBtn?.addEventListener('click', openModal);
+  closeBtn?.addEventListener('click', closeModal);
+  doneBtn?.addEventListener('click', closeModal);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  const getSites = () => {
+    return (settings.quickLaunchSites && settings.quickLaunchSites.length > 0)
+      ? [...settings.quickLaunchSites]
+      : [...DEFAULT_QUICK_LAUNCH];
+  };
+
+  const saveSites = async (sites) => {
+    settings.quickLaunchSites = sites;
+    await chrome.storage.local.set({ popupSettings: settings });
+    renderQuickLaunch();
+    renderModalList();
+  };
+
+  const renderModalList = () => {
+    const sites = getSites();
+    listContainer.innerHTML = '';
+    if (sites.length === 0) {
+      listContainer.innerHTML = '<div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 12px;">Nenhum site configurado.</div>';
+      return;
+    }
+
+    sites.forEach((site, index) => {
+      let hostname = '';
+      try {
+        hostname = new URL(site.url).hostname;
+      } catch (e) {
+        hostname = site.url;
+      }
+      const faviconUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
+
+      const row = document.createElement('div');
+      row.className = 'modal-ql-row';
+
+      const info = document.createElement('div');
+      info.className = 'modal-ql-row-info';
+
+      const icon = document.createElement('img');
+      icon.src = faviconUrl;
+      icon.className = 'ql-icon';
+      icon.onerror = () => { icon.style.display = 'none'; };
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'modal-ql-row-name';
+      nameSpan.textContent = site.name;
+
+      const urlSpan = document.createElement('span');
+      urlSpan.className = 'modal-ql-row-url';
+      urlSpan.textContent = site.url;
+
+      info.appendChild(icon);
+      info.appendChild(nameSpan);
+      info.appendChild(urlSpan);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'modal-ql-del-btn';
+      delBtn.title = 'Remover este site';
+      delBtn.textContent = '🗑️';
+      delBtn.addEventListener('click', async () => {
+        sites.splice(index, 1);
+        await saveSites(sites);
+      });
+
+      row.appendChild(info);
+      row.appendChild(delBtn);
+      listContainer.appendChild(row);
+    });
+  };
+
+  addBtn?.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    let url = urlInput.value.trim();
+    if (!name || !url) {
+      alert('Por favor informe o Nome e a URL do site.');
+      return;
+    }
+
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
+    }
+
+    const sites = getSites();
+    sites.push({ id: 'site_' + Date.now(), name, url });
+    await saveSites(sites);
+
+    nameInput.value = '';
+    urlInput.value = '';
+    nameInput.focus();
+  });
+
+  const handleKey = (e) => {
+    if (e.key === 'Enter') {
+      addBtn?.click();
+    }
+  };
+  nameInput?.addEventListener('keydown', handleKey);
+  urlInput?.addEventListener('keydown', handleKey);
+
+  resetBtn?.addEventListener('click', async () => {
+    if (confirm('Restaurar os sites de início para os padrões (Google, ChatGPT, YouTube)?')) {
+      await saveSites([...DEFAULT_QUICK_LAUNCH]);
+    }
+  });
+}
+
 function renderSupportSection() {
   let mode = settings.supportMode || 'shortcuts';
   if (mode !== 'coffee' && mode !== 'deals') {
@@ -121,7 +312,7 @@ let activeWindowId = null;
 let currentView = 'table';
 let settings = {};
 let vaultGroupBy = 'date';
-let isVaultUnlocked = false;
+let vaultUnlockState = 'locked'; // 'locked' | 'unlocked' | 'decoy'
 let lastVaultAccessTime = 0;
 let lastBackupTime = 0;
 
@@ -142,9 +333,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   lastBackupTime = data.lastBackupTime || 0;
 
   translatePage();
-  await loadData();
+  try {
+    await loadData();
+  } catch (err) {
+    console.error("Critical error in loadData:", err);
+  }
   setupEventListeners();
   setupViewNavigation();
+  setupQuickLaunchModal();
   render();
   await updateLicensingUI();
 
@@ -169,34 +365,47 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 channel.onmessage = (msg) => {
-  if (msg.data.action === 'update_meta' || msg.data.action === 'workspace_update') {
+  if (msg.data.action === 'update_meta' || msg.data.action === 'workspace_update' || msg.data.action === 'sensitive_history_updated') {
     loadData().then(render);
   }
 };
 
 async function loadData() {
-  const [tabs, windows, archived, workspaces, activeTabs, data, recentSessions, syncData] = await Promise.all([
+  const [tabs, windows, archived, workspaces, activeTabs, data, recentSessions, syncData, sensitiveHist] = await Promise.all([
     chrome.tabs.query({}),
     chrome.windows.getAll(),
     getArchivedTabs(),
     getAllWorkspaces(),
     chrome.tabs.query({ active: true, lastFocusedWindow: true }),
-    chrome.storage.local.get(['popupSettings', 'panicPin', 'panicDomains', 'panicSafeDomains']),
+    chrome.storage.local.get(['popupSettings', 'panicPin', 'panicEmergencyPin', 'panicDomains', 'panicSafeDomains']),
     new Promise((resolve) => {
+      const timer = setTimeout(() => resolve([]), 1500);
       if (chrome.sessions && chrome.sessions.getRecentlyClosed) {
-        chrome.sessions.getRecentlyClosed({ maxResults: 25 }, resolve);
+        try {
+          chrome.sessions.getRecentlyClosed({ maxResults: 25 }, (res) => {
+            clearTimeout(timer);
+            resolve(res || []);
+          });
+        } catch (e) {
+          clearTimeout(timer);
+          resolve([]);
+        }
       } else {
+        clearTimeout(timer);
         resolve([]);
       }
     }),
-    chrome.storage.sync.get('enableAffiliateSpeedDial')
+    chrome.storage.sync.get('enableAffiliateSpeedDial').catch(() => ({})),
+    getSensitiveHistory()
   ]);
   
   settings = data.popupSettings || {};
   settings.panicPin = data.panicPin || null;
+  settings.panicEmergencyPin = data.panicEmergencyPin || null;
   settings.panicDomains = data.panicDomains || [];
   settings.panicSafeDomains = data.panicSafeDomains || [];
   enableAffiliateSpeedDial = syncData.enableAffiliateSpeedDial !== false;
+  sensitiveHistoryItems = sensitiveHist || [];
   
   const activeTab = activeTabs[0];
   if (activeTab) {
@@ -213,19 +422,32 @@ async function loadData() {
   allTabs = [];
   for (const tab of tabs) {
     if (tab.url) {
-      const meta = await getTabMeta(tab.url);
-      allTabs.push({
-        id: tab.id,
-        windowId: tab.windowId,
-        windowIndex: windowMap.get(tab.windowId) || '?',
-        title: tab.title || '',
-        url: tab.url,
-        domain: new URL(tab.url).hostname.replace('www.', ''),
-        favIconUrl: tab.favIconUrl,
-        meta: meta,
-        ageMins: Math.floor((Date.now() - meta.data_abertura) / 60000),
-        memory: tab.discarded ? 15 : 80 + (tab.url.length % 200)
-      });
+      try {
+        const meta = await getTabMeta(tab.url).catch(() => ({}));
+        let domain = '';
+        try {
+          domain = new URL(tab.url).hostname.replace(/^www\./, '');
+        } catch(e) {
+          domain = tab.url;
+        }
+
+        const openTime = (meta && meta.data_abertura) ? meta.data_abertura : Date.now();
+
+        allTabs.push({
+          id: tab.id,
+          windowId: tab.windowId,
+          windowIndex: windowMap.get(tab.windowId) || '?',
+          title: tab.title || '',
+          url: tab.url,
+          domain: domain,
+          favIconUrl: tab.favIconUrl,
+          meta: meta || {},
+          ageMins: Math.floor((Date.now() - openTime) / 60000),
+          memory: tab.discarded ? 15 : 80 + (tab.url.length % 200)
+        });
+      } catch (err) {
+        console.warn("Skipping malformed tab:", tab, err);
+      }
     }
   }
 }
@@ -404,14 +626,6 @@ function setupEventListeners() {
 
   document.getElementById('sd-amazon')?.addEventListener('click', () => {
     chrome.tabs.create({ url: activeAffiliateLinks.amazon });
-  });
-
-  document.getElementById('sd-mercadolivre')?.addEventListener('click', () => {
-    chrome.tabs.create({ url: activeAffiliateLinks.mercadolivre });
-  });
-
-  document.getElementById('sd-aliexpress')?.addEventListener('click', () => {
-    chrome.tabs.create({ url: activeAffiliateLinks.aliexpress });
   });
 
   document.getElementById('bmc-btn')?.addEventListener('click', (e) => {
@@ -618,34 +832,41 @@ function matchGhost(url1, url2, scope) {
 }
 
 function getProcessedData() {
-  const normalize = (u) => u.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+  const normalize = (u) => u.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
   const normalizedQuery = normalize(filters.url);
 
   let filtered = allTabs.filter(tab => {
-    const titleMatch = (tab.meta.customTitle || tab.title).toLowerCase().includes(filters.title);
+    const title = (tab.meta?.customTitle || tab.title || '').toLowerCase();
+    const titleMatch = title.includes((filters.title || '').toLowerCase());
     
     let urlMatch = false;
-    if (filters.url === '') {
+    if (!filters.url) {
       urlMatch = true;
     } else if (filters.exactUrl) {
-      urlMatch = normalize(tab.url) === normalizedQuery;
+      urlMatch = normalize(tab.url || '') === normalizedQuery;
     } else {
-      urlMatch = tab.url.toLowerCase().includes(filters.url);
+      urlMatch = (tab.url || '').toLowerCase().includes((filters.url || '').toLowerCase());
     }
 
-    const ageMatch = filters.age === 0 || tab.ageMins >= filters.age;
-    const starMatch = filters.importance === 0 || tab.meta.importancia >= filters.importance;
+    const ageMatch = filters.age === 0 || (tab.ageMins || 0) >= filters.age;
+    const starMatch = filters.importance === 0 || (tab.meta?.importancia || 0) >= filters.importance;
     return titleMatch && urlMatch && ageMatch && starMatch;
   });
 
   filtered.sort((a, b) => {
-    const valA = a.meta[sortConfig.key] || a[sortConfig.key];
-    const valB = b.meta[sortConfig.key] || b[sortConfig.key];
+    const valA = tabA_val(a);
+    const valB = tabA_val(b);
     if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
     if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
   return filtered;
+}
+
+function tabA_val(t) {
+  if (t.meta && t.meta[sortConfig.key] !== undefined) return t.meta[sortConfig.key];
+  if (t[sortConfig.key] !== undefined) return t[sortConfig.key];
+  return 0;
 }
 
 function render() {
@@ -679,6 +900,7 @@ function render() {
     if (showSearch) setupGoogleSearchForm();
   }
 
+  renderQuickLaunch();
   renderSupportSection();
   
   if (currentView === 'table') renderTable(processed); 
@@ -1013,7 +1235,7 @@ function createBarChart(data, color, unit = 'tabs') {
   `;
 }
 
-function renderVault() {
+async function renderVault() {
   const tbody = document.getElementById('vault-table-body');
   const panicTbody = document.getElementById('panic-vault-table-body');
   if (!tbody || !panicTbody) return;
@@ -1062,43 +1284,73 @@ function renderVault() {
 
   // Handle Pin Lock/Unlock Banner
   const pinBanner = document.getElementById('vault-pin-banner');
+  const totalSensitiveCount = panicArchivedTabs.length + sensitiveHistoryItems.length;
   if (pinBanner) {
-    if (panicArchivedTabs.length > 0) {
+    if (totalSensitiveCount > 0) {
       pinBanner.style.display = 'flex';
       const pinMsg = document.getElementById('vault-pin-message');
       const unlockBtn = document.getElementById('btn-unlock-vault');
+      const panicSection = document.getElementById('panic-vault-section');
+      const panicTitle = document.getElementById('panic-vault-title-text');
+      const restoreBtn = document.getElementById('btn-restore-all-panic');
+      const isPro = await checkPremium();
       
-      if (!isVaultUnlocked) {
-        if (pinMsg) pinMsg.innerText = `🔒 ${panicArchivedTabs.length} sensitive item(s) are hidden behind PIN.`;
+      if (vaultUnlockState === 'locked') {
+        if (pinMsg) {
+          pinMsg.innerText = isPro ? '🔒 Vault Locked.' : `🔒 ${totalSensitiveCount} sensitive item(s) are hidden behind PIN.`;
+        }
         if (unlockBtn) {
           unlockBtn.innerText = 'Unlock Vault';
           unlockBtn.style.background = '#d97706';
           unlockBtn.style.borderColor = '#d97706';
         }
-        document.getElementById('panic-vault-section').style.display = 'none';
-      } else {
-        if (pinMsg) pinMsg.innerText = `🔓 Vault unlocked. Sensitive items are visible below.`;
+        if (panicSection) panicSection.style.display = 'none';
+      } else if (vaultUnlockState === 'decoy') {
+        if (pinMsg) pinMsg.innerText = '🔓 Vault unlocked.';
         if (unlockBtn) {
           unlockBtn.innerText = 'Lock Vault';
           unlockBtn.style.background = '#ef4444';
           unlockBtn.style.borderColor = '#ef4444';
         }
-        document.getElementById('panic-vault-section').style.display = 'block';
+        if (panicSection) panicSection.style.display = 'block';
+        if (panicTitle) panicTitle.innerText = '🚫 Panic-Closed Tabs (0)';
+        if (restoreBtn) restoreBtn.style.display = 'none';
+      } else {
+        if (pinMsg) pinMsg.innerText = '🔓 Vault unlocked. Sensitive items are visible below.';
+        if (unlockBtn) {
+          unlockBtn.innerText = 'Lock Vault';
+          unlockBtn.style.background = '#ef4444';
+          unlockBtn.style.borderColor = '#ef4444';
+        }
+        if (panicSection) panicSection.style.display = 'block';
+        if (panicTitle) panicTitle.innerText = `🚫 Panic-Closed Tabs (${panicArchivedTabs.length})`;
+        if (restoreBtn) restoreBtn.style.display = panicArchivedTabs.length > 0 ? 'inline-block' : 'none';
       }
 
       if (unlockBtn && !unlockBtn.dataset.listenerBound) {
         unlockBtn.dataset.listenerBound = 'true';
-        unlockBtn.addEventListener('click', () => {
-          if (!isVaultUnlocked) {
-            const inputPin = prompt('Enter your 4-digit Panic PIN to unlock sensitive items:');
+        unlockBtn.addEventListener('click', async () => {
+          if (vaultUnlockState === 'locked') {
+            if (!settings.panicPin) {
+              vaultUnlockState = 'unlocked';
+              renderVault();
+              return;
+            }
+            const inputPin = prompt('Enter 4-digit PIN to unlock vault:');
+            if (!inputPin) return;
+
+            const isProUser = await checkPremium();
             if (inputPin === settings.panicPin) {
-              isVaultUnlocked = true;
+              vaultUnlockState = 'unlocked';
+              renderVault();
+            } else if (isProUser && settings.panicEmergencyPin && inputPin === settings.panicEmergencyPin) {
+              vaultUnlockState = 'decoy';
               renderVault();
             } else {
               alert('Incorrect PIN!');
             }
           } else {
-            isVaultUnlocked = false;
+            vaultUnlockState = 'locked';
             renderVault();
           }
         });
@@ -1228,8 +1480,76 @@ function renderVault() {
   };
 
   populateTable(tbody, safeArchivedTabs);
-  if (isVaultUnlocked) {
+  if (vaultUnlockState === 'unlocked') {
     populateTable(panicTbody, panicArchivedTabs);
+  } else if (vaultUnlockState === 'decoy') {
+    panicTbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #94a3b8; padding: 20px; font-style: italic;">0 itens arquivados</td></tr>';
+  }
+
+  // Handle Sensitive Browsing History Table (Auto-Purged from Chrome)
+  const sensitiveTitle = document.getElementById('sensitive-history-title-text');
+  const sensitiveTbody = document.getElementById('sensitive-history-table-body');
+  const clearSensitiveHistBtn = document.getElementById('btn-clear-sensitive-history');
+
+  if (clearSensitiveHistBtn && !clearSensitiveHistBtn.dataset.listenerBound) {
+    clearSensitiveHistBtn.dataset.listenerBound = 'true';
+    clearSensitiveHistBtn.addEventListener('click', async () => {
+      if (confirm('Tem certeza que deseja apagar todo o histórico sensível do Vault?')) {
+        await clearSensitiveHistory();
+        await loadData();
+        render();
+      }
+    });
+  }
+
+  if (sensitiveTbody) {
+    if (vaultUnlockState === 'unlocked') {
+      if (sensitiveTitle) {
+        sensitiveTitle.innerHTML = `🕵️ Sensitive Browsing History (${sensitiveHistoryItems.length} items) <span style="font-size: 9px; font-weight: bold; background: #fef08a; color: #713f12; padding: 1px 5px; border-radius: 3px;">🔒 Pro</span>`;
+      }
+      if (clearSensitiveHistBtn) {
+        clearSensitiveHistBtn.style.display = sensitiveHistoryItems.length > 0 ? 'inline-block' : 'none';
+      }
+
+      if (sensitiveHistoryItems.length === 0) {
+        sensitiveTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #64748b; padding: 20px;">Nenhum histórico sensível arquivado.</td></tr>';
+      } else {
+        sensitiveTbody.innerHTML = '';
+        const sortedItems = [...sensitiveHistoryItems].sort((a, b) => (b.visitTime || 0) - (a.visitTime || 0));
+        sortedItems.forEach(item => {
+          const tr = document.createElement('tr');
+          const favUrl = `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(item.url)}&size=32`;
+          const dateStr = item.visitTime ? new Date(item.visitTime).toLocaleString() : 'N/A';
+          tr.innerHTML = `
+            <td>
+              <img src="${favUrl}" width="16" height="16" style="vertical-align: middle; margin-right: 6px; border-radius: 2px;" onerror="this.style.display='none'">
+              <span title="${item.title || item.url}">${item.title || item.domain || 'Untitled'}</span>
+            </td>
+            <td class="truncate" style="max-width: 350px;">
+              <a href="${item.url}" target="_blank" style="color: #2563eb; text-decoration: none;" title="${item.url}">${item.url}</a>
+            </td>
+            <td style="color: #64748b; font-size: 11px;">${dateStr}</td>
+            <td style="text-align: center;">
+              <button class="btn-del-sens-item secondary" title="Excluir do histórico" style="padding: 3px 8px; font-size: 11px; cursor: pointer; border-radius: 4px; color: #dc2626; border-color: #fca5a5;">🗑️</button>
+            </td>
+          `;
+          tr.querySelector('.btn-del-sens-item').addEventListener('click', async () => {
+            await deleteSensitiveHistoryItem(item.id);
+            await loadData();
+            render();
+          });
+          sensitiveTbody.appendChild(tr);
+        });
+      }
+    } else if (vaultUnlockState === 'decoy') {
+      if (sensitiveTitle) {
+        sensitiveTitle.innerHTML = '🕵️ Sensitive Browsing History (0 items) <span style="font-size: 9px; font-weight: bold; background: #fef08a; color: #713f12; padding: 1px 5px; border-radius: 3px;">🔒 Pro</span>';
+      }
+      if (clearSensitiveHistBtn) {
+        clearSensitiveHistBtn.style.display = 'none';
+      }
+      sensitiveTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 20px; font-style: italic;">0 itens gravados / Nenhum histórico encontrado.</td></tr>';
+    }
   }
 }
 

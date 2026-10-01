@@ -747,6 +747,18 @@ path.slice-highlight {
   background: #f1f5f9;
 }
 
+.speed-dial-add-card {
+  border-style: dashed;
+  background: #ffffff;
+  color: #64748b;
+}
+
+.speed-dial-add-card:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
 .sd-icon {
   width: 20px;
   height: 20px;
@@ -966,3 +978,213 @@ path.slice-highlight {
   color: #2563eb;
   white-space: nowrap;
 }
+
+/* Quick Launch Bar (Sites de Início) */
+.quick-launch-section {
+  max-width: 680px;
+  margin: -4px auto 16px auto;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.quick-launch-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-launch-items {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-launch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s ease-in-out;
+  user-select: none;
+  text-decoration: none;
+}
+
+.quick-launch-chip:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12);
+  transform: translateY(-1px);
+}
+
+.quick-launch-chip:active {
+  transform: translateY(0);
+}
+
+.quick-launch-add-chip {
+  background: #f8fafc;
+  border-style: dashed;
+  color: #64748b;
+}
+
+.quick-launch-add-chip:hover {
+  background: #f1f5f9;
+  border-color: #64748b;
+  color: #1e293b;
+}
+
+.ql-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.ql-label {
+  line-height: 1;
+}
+
+/* Quick Launch Modal */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-card {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: modalFadeIn 0.15s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.modal-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-close-icon {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.modal-close-icon:hover {
+  color: #ef4444;
+  background: #fee2e2;
+}
+
+.modal-card-body {
+  padding: 16px 18px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.modal-ql-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.modal-ql-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.modal-ql-row-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.modal-ql-row-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: #1e293b;
+}
+
+.modal-ql-row-url {
+  font-size: 11px;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.modal-ql-del-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 3px 6px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.modal-ql-del-btn:hover {
+  background: #fee2e2;
+}
+
+.modal-ql-add-box {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.modal-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
